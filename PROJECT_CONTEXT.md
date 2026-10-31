@@ -1092,3 +1092,56 @@ npm run dev
   - Unit Tests: 186 tests passing across 9 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`, `quotations.test.js`, `discounts.test.js`, `subscriptions.test.js`, `invoices.test.js`, `payments.test.js`).
   - Linter: 0 warnings, 0 errors across 122 files (`oxlint`).
   - Production Build: 2,204 modules transformed cleanly in 3.35s (`vite build`).
+
+### Phase 11: Customer Portal and Self-Service Experience (Completed)
+* **Customer Navigation & Role Isolation (`navConfig.js`, `Sidebar.jsx`, `Navbar.jsx`)**:
+  - Added `profile` (`/profile`) route and navigation entry to `NAV_ITEMS`.
+  - Configured `getNavItemsForRole('customer')` to strictly deliver self-service views with friendly, customer-centric labels in prescribed order:
+    1. `Overview` (`/`)
+    2. `My Quotations` (`/quotations`)
+    3. `My Subscriptions` (`/subscriptions`)
+    4. `My Invoices` (`/invoices`)
+    5. `My Payments` (`/payments`)
+    6. `My Profile` (`/profile`)
+  - Guaranteed administrative route isolation: links to Users/Customers, Products, Plans, Taxes, Discounts, Analytics, and System Settings are strictly excluded from the customer navigation.
+  - Linked the user avatar pill in `Navbar.jsx` to `/profile` for fast access across all authenticated roles.
+* **Customer Overview Dashboard (`CustomerDashboardView.jsx` & `dashboardService.js`)**:
+  - Replaced legacy mock metrics with live backend customer aggregation via `computeCustomerMetrics`:
+    - Queries active customer subscriptions, pending quotations, itemized invoices, and historical payments.
+    - Aggregates true outstanding balance (`amount_due` across unpaid/partially paid non-cancelled invoices).
+    - Identifies earliest upcoming subscription renewal date from active contracts.
+    - Zero fabricated statistics or simulated financial trends.
+  - Actionable customer notification banners:
+    - High-priority overdue/unpaid balance alert with direct "Pay Online" action.
+    - Pending quotation alert with direct "Review & Accept" action.
+  - Self-service quick-action hub providing deep links to Subscriptions, Quotations, Invoices, Payments, and Profile.
+  - Responsive tables for Subscribed Services, Recent Invoices, and Recent Payments with empty-state guidance.
+* **My Quotations Customer Experience (`QuotationDetailsModal.jsx` & `quotationValidation.js`)**:
+  - Maintained customer quotation acceptance and rejection capabilities for quotations in `sent` status.
+  - Guarded "Convert to Active Subscription" button with `canManage`: customers are strictly prevented from administratively converting accepted quotations into live subscriptions.
+  - Exported permission helpers `canCustomerRespond`, `canConvertToSubscription`, and `canCreateOrEditQuotation`.
+* **My Subscriptions Customer Experience (`SubscriptionsPage.jsx` & `subscriptionValidation.js`)**:
+  - Role-aware page title: renders "My Subscriptions" for customers and "Subscriptions" for admin/staff.
+  - Hidden administrative "New Subscription" provisioning button for customers.
+  - Contextual customer empty state offering direct navigation to "My Quotations" when no active subscriptions exist.
+  - Permitted self-service lifecycle controls (pause active subscriptions, resume paused subscriptions, cancel where permitted) while strictly prohibiting administrative closure (`canCloseSubscription`).
+* **My Invoices & My Payments Customer Experience (`InvoicesPage.jsx`, `PaymentsPage.jsx`, `InvoiceDetailsModal.jsx`)**:
+  - Customer invoice inspection with live overdue notices, financial breakdown, and print-ready HTML preview.
+  - Integrated online settlement via Razorpay Test Mode Checkout guarded by `canPayOnline` (strictly enforces invoice ownership `invoice.customer_id === currentUser.id`).
+  - Customer payment history inspection with status badges and transaction identifiers.
+  - Enforced prohibition of manual offline payment recording for customers (`canRecordManualPayment`).
+* **Customer Profile & Account Settings (`ProfilePage.jsx` & `customerPortalValidation.js`)**:
+  - Created `/profile` page mounted behind `<RoleRoute allowedRoles={['admin', 'staff', 'customer']}>`.
+  - Account Identity Hero displaying user name, email, role badge, and account status.
+  - Profile Attributes Card displaying Full Name, Email Address, Phone Number, Company / Organization, Role, and Registration Date.
+  - Firebase Password Reset Email Trigger: allows users to safely dispatch password reset emails to their registered address via Firebase Authentication SDK.
+  - Missing Backend Endpoint Documented: The backend router currently lacks `PUT /api/v1/users/me` or `PATCH /api/v1/users/me` (it only provides `GET /api/v1/users/me` and idempotent registration `POST /api/v1/users/profile`). The profile page renders attributes in verified read-only mode and informs the user of the missing update endpoint.
+* **Payment Security Audit Findings (Read-Only Review of Phase 10)**:
+  - Cryptographic Signature Verification: Backend uses `hmac.compare_digest` in `verify_razorpay_payment` to verify HMAC-SHA256 signatures generated from `order_id + "|" + payment_id` against the configured Razorpay key secret.
+  - Ownership Enforcement: Order creation and payment verification strictly authenticate invoice and order ownership against `current_user.id`.
+  - Overpayment & Replay Protection: Amount balance checks prevent overpayment, and unique constraints on `Payment.razorpay_payment_id` block transaction replay.
+  - Webhook Idempotency: Webhook endpoint validates raw payload signatures and stores processed event IDs in `webhook_events` to prevent duplicate processing.
+* **Testing & Quality Assurance**:
+  - Unit Tests: 213 tests passing across 10 test suites (`customerPortal.test.js` added with 27 individual assertions).
+  - Linter: 0 warnings, 0 errors across 125 files (`oxlint`).
+  - Production Build: 2,206 modules transformed cleanly in 3.50s (`vite build`).

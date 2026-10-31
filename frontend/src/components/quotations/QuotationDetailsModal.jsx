@@ -266,8 +266,8 @@ export default function QuotationDetailsModal({
               </>
             )}
 
-            {/* Accepted & Unconverted: Convert to Subscription */}
-            {quotation.status === 'accepted' && !quotation.converted_subscription_id && (
+            {/* Accepted & Unconverted: Convert to Subscription (Admin & Staff Only) */}
+            {canManage && quotation.status === 'accepted' && !quotation.converted_subscription_id && (
               <Button
                 variant="primary"
                 onClick={() => {

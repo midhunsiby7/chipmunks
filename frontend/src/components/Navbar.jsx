@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { healthService } from '../services/apiClient';
 import { Menu, Bell, User, Search, LogOut } from 'lucide-react';
 import Badge from './ui/Badge';
@@ -115,19 +116,25 @@ export default function Navbar({ onToggleSidebar, currentRole = 'admin', user = 
 
         {/* User Profile Pill & Role Badge */}
         <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
-          <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-700 font-semibold text-xs">
-            <User className="w-4 h-4" />
-          </div>
-          <div className="hidden xl:flex flex-col text-left">
-            <span className="text-xs font-semibold text-slate-900 leading-tight max-w-[140px] truncate">
-              {displayName}
-            </span>
-            <span
-              className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border w-fit ${currentRoleStyle}`}
-            >
-              {currentRole}
-            </span>
-          </div>
+          <Link
+            to="/profile"
+            className="flex items-center gap-2.5 p-1 rounded-lg hover:bg-slate-100 transition-colors group"
+            title="View Profile & Settings"
+          >
+            <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-700 font-semibold text-xs group-hover:border-indigo-400 group-hover:text-indigo-600 transition-colors">
+              <User className="w-4 h-4" />
+            </div>
+            <div className="hidden xl:flex flex-col text-left">
+              <span className="text-xs font-semibold text-slate-900 leading-tight max-w-[140px] truncate group-hover:text-indigo-600">
+                {displayName}
+              </span>
+              <span
+                className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border w-fit ${currentRoleStyle}`}
+              >
+                {currentRole}
+              </span>
+            </div>
+          </Link>
 
           {/* Quick Sign Out Action Button */}
           {onLogout && (

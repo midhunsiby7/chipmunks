@@ -16,6 +16,7 @@ import TaxesPage from './pages/TaxesPage';
 import QuotationsPage from './pages/QuotationsPage';
 import DiscountsPage from './pages/DiscountsPage';
 import PaymentsPage from './pages/PaymentsPage';
+import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -132,6 +133,16 @@ export default function App() {
               element={
                 <RoleRoute allowedRoles={['admin', 'staff', 'customer']}>
                   <PaymentsPage />
+                </RoleRoute>
+              }
+            />
+
+            {/* 10. Profile & Settings (Admin, Staff, Customer) */}
+            <Route
+              path="profile"
+              element={
+                <RoleRoute allowedRoles={['admin', 'staff', 'customer']}>
+                  <ProfilePage />
                 </RoleRoute>
               }
             />

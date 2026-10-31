@@ -165,3 +165,51 @@ export function getQuotationStatusBadgeConfig(status, isExpired = false) {
   }
   return { variant: 'default', label: 'Draft' };
 }
+
+/**
+ * Checks whether the current user is permitted to accept or reject a quotation.
+ * Customers can only respond if the quotation is in 'sent' status and unexpired.
+ *
+ * @param {string} role
+ * @param {Object} quotation
+ * @returns {boolean}
+ */
+export function canCustomerRespond(role, quotation) {
+  if (!role || !quotation) return false;
+  const normRole = String(role).toLowerCase();
+  const status = String(quotation.status || '').toLowerCase();
+  const expired = isQuotationExpired(quotation.valid_until);
+
+  return normRole === 'customer' && status === 'sent' && !expired;
+}
+
+/**
+ * Checks whether the current user is permitted to administratively convert
+ * an accepted quotation into an active subscription.
+ * Strictly restricted to Admin and Staff; customers are prohibited.
+ *
+ * @param {string} role
+ * @param {Object} quotation
+ * @returns {boolean}
+ */
+export function canConvertToSubscription(role, quotation) {
+  if (!role || !quotation) return false;
+  const normRole = String(role).toLowerCase();
+  const status = String(quotation.status || '').toLowerCase();
+
+  const isAdminOrStaff = normRole === 'admin' || normRole === 'staff';
+  return isAdminOrStaff && status === 'accepted';
+}
+
+/**
+ * Checks whether the current user is authorized to create or edit quotations.
+ * Admin and Staff have full authority; Customer is prohibited.
+ *
+ * @param {string} role
+ * @returns {boolean}
+ */
+export function canCreateOrEditQuotation(role) {
+  if (!role) return false;
+  const normRole = String(role).toLowerCase();
+  return normRole === 'admin' || normRole === 'staff';
+}

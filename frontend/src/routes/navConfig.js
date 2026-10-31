@@ -11,6 +11,7 @@ import {
   BarChart3,
   Settings,
   Percent,
+  User,
 } from 'lucide-react';
 
 /**
@@ -128,13 +129,49 @@ export const NAV_ITEMS = [
     status: 'planned',
     plannedPhase: 'Phase 8',
   },
+  {
+    id: 'profile',
+    name: 'Profile',
+    path: '/profile',
+    icon: User,
+    section: 'Account',
+    roles: ['admin', 'staff', 'customer'],
+    status: 'active',
+  },
 ];
 
 /**
  * Filter navigation items based on the current user role.
  * Defaults to all items if no role is supplied.
+ * For customers, orders and formats labels according to Phase 11 self-service requirements.
  */
 export function getNavItemsForRole(role = 'admin') {
   if (!role) return NAV_ITEMS;
-  return NAV_ITEMS.filter((item) => item.roles.includes(role.toLowerCase()));
+  const normalizedRole = role.toLowerCase();
+  const filtered = NAV_ITEMS.filter((item) => item.roles.includes(normalizedRole));
+
+  if (normalizedRole === 'customer') {
+    const customerOrder = ['overview', 'quotations', 'subscriptions', 'invoices', 'payments', 'profile'];
+    const customerNameMap = {
+      overview: 'Overview',
+      quotations: 'My Quotations',
+      subscriptions: 'My Subscriptions',
+      invoices: 'My Invoices',
+      payments: 'My Payments',
+      profile: 'My Profile',
+    };
+
+    return customerOrder
+      .map((id) => {
+        const item = filtered.find((it) => it.id === id);
+        if (!item) return null;
+        return {
+          ...item,
+          name: customerNameMap[id] || item.name,
+        };
+      })
+      .filter(Boolean);
+  }
+
+  return filtered;
 }

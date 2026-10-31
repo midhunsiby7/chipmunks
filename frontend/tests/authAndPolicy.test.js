@@ -91,32 +91,42 @@ test('Firebase Error Code Translation', async (t) => {
 });
 
 test('Role-Based Access Navigation Filtering', async (t) => {
-  await t.test('Admin role receives all navigation items including settings', () => {
+  await t.test('Admin role receives all navigation items including settings and profile', () => {
     const adminItems = getNavItemsForRole('admin');
-    assert.equal(adminItems.length, 12);
+    assert.equal(adminItems.length, 13);
     assert.ok(adminItems.some((item) => item.id === 'settings'));
     assert.ok(adminItems.some((item) => item.id === 'customers'));
     assert.ok(adminItems.some((item) => item.id === 'analytics'));
     assert.ok(adminItems.some((item) => item.id === 'taxes'));
+    assert.ok(adminItems.some((item) => item.id === 'profile'));
   });
 
   await t.test('Staff role receives operations items but excludes settings', () => {
     const staffItems = getNavItemsForRole('staff');
-    assert.equal(staffItems.length, 11);
+    assert.equal(staffItems.length, 12);
     assert.ok(!staffItems.some((item) => item.id === 'settings'));
     assert.ok(staffItems.some((item) => item.id === 'customers'));
     assert.ok(staffItems.some((item) => item.id === 'quotations'));
     assert.ok(staffItems.some((item) => item.id === 'taxes'));
+    assert.ok(staffItems.some((item) => item.id === 'profile'));
   });
 
-  await t.test('Customer role receives only personal billing items', () => {
+  await t.test('Customer role receives self-service portal items with friendly labels', () => {
     const customerItems = getNavItemsForRole('customer');
-    assert.equal(customerItems.length, 5);
+    assert.equal(customerItems.length, 6);
     const ids = customerItems.map((i) => i.id);
-    assert.deepEqual(ids, ['overview', 'subscriptions', 'invoices', 'quotations', 'payments']);
+    assert.deepEqual(ids, ['overview', 'quotations', 'subscriptions', 'invoices', 'payments', 'profile']);
+    assert.equal(customerItems.find((i) => i.id === 'quotations').name, 'My Quotations');
+    assert.equal(customerItems.find((i) => i.id === 'subscriptions').name, 'My Subscriptions');
+    assert.equal(customerItems.find((i) => i.id === 'invoices').name, 'My Invoices');
+    assert.equal(customerItems.find((i) => i.id === 'payments').name, 'My Payments');
+    assert.equal(customerItems.find((i) => i.id === 'profile').name, 'My Profile');
     assert.ok(!ids.includes('customers'));
     assert.ok(!ids.includes('settings'));
     assert.ok(!ids.includes('analytics'));
     assert.ok(!ids.includes('products'));
+    assert.ok(!ids.includes('plans'));
+    assert.ok(!ids.includes('taxes'));
+    assert.ok(!ids.includes('discounts'));
   });
 });
