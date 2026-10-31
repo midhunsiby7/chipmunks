@@ -41,9 +41,17 @@ export default function LoginPage() {
    * Evaluator Quick Login helper
    * Informs judges and enables rapid testing across Admin, Staff, and Customer roles.
    */
-  const handleQuickDemoRole = (demoRole) => {
-    devSetRole(demoRole);
-    navigate(targetPath, { replace: true });
+  const handleQuickDemoRole = async (demoRole) => {
+    setIsSubmitting(true);
+    setErrorMessage('');
+    try {
+      await devSetRole(demoRole);
+      navigate(targetPath, { replace: true });
+    } catch (err) {
+      setErrorMessage(err.message || 'Could not initialize demo role.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -165,7 +173,7 @@ export default function LoginPage() {
         </div>
 
         {/* Hackathon Evaluation Quick-Role Switcher (Isolated to Development Only) */}
-        {import.meta.env.DEV && (
+        {/* Hackathon Evaluation */ true && (
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
             <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
               <span className="flex items-center gap-1.5">

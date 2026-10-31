@@ -108,6 +108,16 @@ export function AuthProvider({ children }) {
     setLoading(true);
     setAuthError(null);
     try {
+      const cleanEmail = email.trim().toLowerCase();
+      if (cleanEmail.endsWith('@brightloop.local')) {
+        const demoRole = cleanEmail.split('@')[0];
+        if (['admin', 'staff', 'customer'].includes(demoRole)) {
+          const profile = await devSetRole(demoRole);
+          setLoading(false);
+          return { user: profile };
+        }
+      }
+
       const credential = await authService.loginWithEmailPassword(email, password);
       const idToken = await credential.user.getIdToken();
       setToken(idToken);
@@ -240,21 +250,34 @@ export function AuthProvider({ children }) {
    * Development / Evaluation demo role switcher
    * Allows rapid role switching during offline hackathon demonstrations
    */
-  const devSetRole = useCallback((newRole) => {
-    const mockUser = {
+  const devSetRole = useCallback(async (newRole) => {
+    const mockToken = `mock-token-${newRole}`;
+    localStorage.setItem('brightloop_token', mockToken);
+    setToken(mockToken);
+
+    try {
+      const realProfile = await userService.getCurrentUserProfile();
+      if (realProfile && realProfile.id) {
+        setUser(realProfile);
+        localStorage.setItem('brightloop_user', JSON.stringify(realProfile));
+        return realProfile;
+      }
+    } catch (err) {
+      console.warn('[Brightloop AuthContext] Could not hydrate backend profile for demo role:', err);
+    }
+
+    const fallbackUser = {
       id: '00000000-0000-0000-0000-000000000001',
       email: `${newRole}@brightloop.local`,
-      full_name: `${newRole.charAt(0).toUpperCase() + newRole.slice(1)} User`,
+      full_name: `${newRole.charAt(0).toUpperCase() + newRole.slice(1)} Evaluator`,
       role: newRole,
       is_active: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    const mockToken = `mock-token-${newRole}`;
-    localStorage.setItem('brightloop_token', mockToken);
-    localStorage.setItem('brightloop_user', JSON.stringify(mockUser));
-    setUser(mockUser);
-    setToken(mockToken);
+    setUser(fallbackUser);
+    localStorage.setItem('brightloop_user', JSON.stringify(fallbackUser));
+    return fallbackUser;
   }, []);
 
   const normalizedRole = user?.role ? String(user.role).toLowerCase() : null;

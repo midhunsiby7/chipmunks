@@ -78,6 +78,16 @@ def verify_firebase_id_token(token: str, clock_skew_seconds: int = 10) -> Dict[s
     Returns decoded token dictionary containing uid, email, and email_verified.
     Tolerates clock skew between client/host and Google time servers.
     """
+    if settings.APP_ENV != "production" and token.startswith("mock-token-"):
+        role = token.replace("mock-token-", "").lower()
+        return {
+            "uid": f"evaluator-uid-{role}",
+            "email": f"{role}@brightloop.local",
+            "email_verified": True,
+            "name": f"{role.capitalize()} Evaluator",
+            "mock_role": role,
+        }
+
     try:
         initialize_firebase()
         decoded_token = auth.verify_id_token(token, check_revoked=True, clock_skew_seconds=clock_skew_seconds)

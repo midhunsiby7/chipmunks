@@ -34,19 +34,63 @@ async def run_seed():
     logger.info("Starting Brightloop demo seeding...")
 
     async with AsyncSessionLocal() as session:
-        # 1. Demo Customers
-        c1 = await session.scalar(select(User).where(User.email == "demo.customer1@brightloop.com"))
+        # 0. Primary Hackathon Evaluator Demo Accounts (Admin, Staff, Customer)
+        demo_admin = await session.scalar(select(User).where(User.firebase_uid == "evaluator-uid-admin"))
+        if not demo_admin:
+            demo_admin = await session.scalar(select(User).where(User.email == "admin@brightloop.local"))
+        if not demo_admin:
+            demo_admin = User(
+                firebase_uid="evaluator-uid-admin",
+                email="admin@brightloop.local",
+                full_name="Demo Administrator",
+                role=UserRole.ADMIN,
+                is_active=True,
+            )
+            session.add(demo_admin)
+        else:
+            demo_admin.firebase_uid = "evaluator-uid-admin"
+            demo_admin.role = UserRole.ADMIN
+            demo_admin.is_active = True
+
+        demo_staff = await session.scalar(select(User).where(User.firebase_uid == "evaluator-uid-staff"))
+        if not demo_staff:
+            demo_staff = await session.scalar(select(User).where(User.email == "staff@brightloop.local"))
+        if not demo_staff:
+            demo_staff = User(
+                firebase_uid="evaluator-uid-staff",
+                email="staff@brightloop.local",
+                full_name="Demo Operations Staff",
+                role=UserRole.STAFF,
+                is_active=True,
+            )
+            session.add(demo_staff)
+        else:
+            demo_staff.firebase_uid = "evaluator-uid-staff"
+            demo_staff.role = UserRole.STAFF
+            demo_staff.is_active = True
+
+        # Demo Customer used by the Hackathon Evaluation quick-switcher
+        c1 = await session.scalar(select(User).where(User.firebase_uid == "evaluator-uid-customer"))
+        if not c1:
+            c1 = await session.scalar(select(User).where(User.email == "customer@brightloop.local"))
         if not c1:
             c1 = User(
-                firebase_uid="demo-customer-1-uid",
-                email="demo.customer1@brightloop.com",
+                firebase_uid="evaluator-uid-customer",
+                email="customer@brightloop.local",
                 full_name="Acme Global Corporation",
                 company_name="Acme Global",
                 role=UserRole.CUSTOMER,
                 is_active=True,
             )
             session.add(c1)
+        else:
+            c1.firebase_uid = "evaluator-uid-customer"
+            c1.role = UserRole.CUSTOMER
+            c1.is_active = True
+            if not c1.company_name:
+                c1.company_name = "Acme Global"
 
+        # Additional Demo Customers
         c2 = await session.scalar(select(User).where(User.email == "demo.customer2@brightloop.com"))
         if not c2:
             c2 = User(
@@ -110,18 +154,53 @@ async def run_seed():
         await session.flush()
 
         # 3. Subscription Plans
+        plan_starter_m = await session.scalar(select(Plan).where(Plan.code == "PLAN-STARTER-M"))
+        if not plan_starter_m:
+            plan_starter_m = Plan(
+                code="PLAN-STARTER-M",
+                name="Starter Tier (Monthly)",
+                description="Essential subscription billing for growing startups and small teams.",
+                billing_interval=BillingInterval.MONTHLY,
+                interval_count=1,
+                price=Decimal("49.00"),
+                currency="USD",
+                trial_period_days=7,
+                minimum_quantity=1,
+                product_id=p2.id if p2 else None,
+                is_active=True,
+            )
+            session.add(plan_starter_m)
+
+        plan_starter_y = await session.scalar(select(Plan).where(Plan.code == "PLAN-STARTER-Y"))
+        if not plan_starter_y:
+            plan_starter_y = Plan(
+                code="PLAN-STARTER-Y",
+                name="Starter Tier (Annual)",
+                description="Annual starter billing with 2 months free included.",
+                billing_interval=BillingInterval.YEARLY,
+                interval_count=1,
+                price=Decimal("490.00"),
+                currency="USD",
+                trial_period_days=14,
+                minimum_quantity=1,
+                product_id=p2.id if p2 else None,
+                is_active=True,
+            )
+            session.add(plan_starter_y)
+
         plan_monthly = await session.scalar(select(Plan).where(Plan.code == "PLAN-PRO-MONTHLY"))
         if not plan_monthly:
             plan_monthly = Plan(
                 code="PLAN-PRO-MONTHLY",
                 name="Pro Growth (Monthly)",
-                description="Full-featured subscription engine with monthly recurring invoicing.",
+                description="Full-featured subscription engine with automated recurring invoicing and tax calculation.",
                 billing_interval=BillingInterval.MONTHLY,
                 interval_count=1,
                 price=Decimal("249.00"),
                 currency="USD",
                 trial_period_days=14,
                 minimum_quantity=1,
+                product_id=p1.id if p1 else None,
                 is_active=True,
             )
             session.add(plan_monthly)
@@ -131,13 +210,14 @@ async def run_seed():
             plan_yearly = Plan(
                 code="PLAN-ENT-YEARLY",
                 name="Enterprise Cloud (Yearly)",
-                description="High-capacity enterprise billing tier with annual billing cycle.",
+                description="High-capacity enterprise billing tier with annual billing cycle and priority SLA.",
                 billing_interval=BillingInterval.YEARLY,
                 interval_count=1,
                 price=Decimal("2490.00"),
                 currency="USD",
                 trial_period_days=30,
                 minimum_quantity=1,
+                product_id=p1.id if p1 else None,
                 is_active=True,
             )
             session.add(plan_yearly)

@@ -1,5 +1,7 @@
 import logging
+import re
 from contextlib import asynccontextmanager
+from typing import Optional
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -37,6 +39,22 @@ app = FastAPI(
 )
 
 
+CORS_ORIGIN_REGEX_STR = (
+    r"^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0|"
+    r"192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|"
+    r".*\.app\.github\.dev|.*\.github\.dev|.*\.ngrok(-free)?\.app)(:\d+)?$"
+)
+CORS_ORIGIN_REGEX = re.compile(CORS_ORIGIN_REGEX_STR)
+
+
+def _is_origin_cors_permitted(origin: Optional[str], allowed_origins: list) -> bool:
+    if not origin:
+        return False
+    if "*" in allowed_origins or origin in allowed_origins:
+        return True
+    return bool(CORS_ORIGIN_REGEX.match(origin))
+
+
 @app.middleware("http")
 async def cors_exception_handling_middleware(request: Request, call_next):
     """
@@ -64,7 +82,7 @@ async def cors_exception_handling_middleware(request: Request, call_next):
                 "detail": "Internal server error." if not settings.DEBUG else f"Internal server error: {exc}"
             },
         )
-        if origin and (origin in allowed_origins or "*" in allowed_origins):
+        if _is_origin_cors_permitted(origin, allowed_origins):
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
             response.headers["Access-Control-Allow-Methods"] = "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT"
@@ -88,7 +106,7 @@ async def global_unhandled_exception_handler(request: Request, exc: Exception):
             "detail": "Internal server error." if not settings.DEBUG else f"Internal server error: {exc}"
         },
     )
-    if origin and (origin in allowed_origins or "*" in allowed_origins):
+    if _is_origin_cors_permitted(origin, allowed_origins):
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Credentials"] = "true"
         response.headers["Access-Control-Allow-Methods"] = "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT"
@@ -101,6 +119,7 @@ async def global_unhandled_exception_handler(request: Request, exc: Exception):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origin_regex=CORS_ORIGIN_REGEX_STR,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
