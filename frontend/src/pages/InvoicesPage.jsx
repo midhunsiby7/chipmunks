@@ -1,6 +1,10 @@
 import React from 'react';
-import StatusBadge from '../components/StatusBadge';
+import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/Table';
 import { formatDate, formatCurrency } from '../utils/formatters';
+import { Plus, Info } from 'lucide-react';
 
 const SAMPLE_INVOICES = [
   {
@@ -32,68 +36,80 @@ const SAMPLE_INVOICES = [
   },
 ];
 
+function getStatusBadge(status) {
+  switch (status) {
+    case 'paid':
+      return <Badge variant="success" size="sm" dot>Paid</Badge>;
+    case 'issued':
+      return <Badge variant="primary" size="sm" dot>Issued</Badge>;
+    case 'overdue':
+      return <Badge variant="danger" size="sm" dot>Overdue</Badge>;
+    case 'draft':
+      return <Badge variant="default" size="sm" dot>Draft</Badge>;
+    case 'void':
+      return <Badge variant="default" size="sm">Void</Badge>;
+    default:
+      return <Badge variant="default" size="sm">{status}</Badge>;
+  }
+}
+
 export default function InvoicesPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between">
+      <PageHeader
+        title="Invoices"
+        description="Automated recurring invoice generation, status tracking, and reconciliation."
+        breadcrumbs={[
+          { label: 'Brightloop', href: '/' },
+          { label: 'Billing' },
+          { label: 'Invoices' },
+        ]}
+        actions={
+          <Button variant="primary" size="sm" leftIcon={Plus}>
+            Create Invoice (Planned)
+          </Button>
+        }
+      />
+
+      {/* Development Preview Transparency Notice */}
+      <div className="flex items-start gap-3 p-3.5 rounded-lg bg-indigo-50/70 border border-indigo-100 text-xs text-indigo-900">
+        <Info className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Invoices</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Automated recurring invoice generation, status tracking, and reconciliation.
-          </p>
+          <span className="font-semibold">Development Preview Mode:</span>
+          <span className="ml-1 text-indigo-700">
+            The invoices below are mock data to verify table styling and status indicators. Backend invoice generation will connect in Phase 5.
+          </span>
         </div>
-        <button
-          type="button"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-        >
-          + Create Invoice (Planned)
-        </button>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Invoice Number
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Customer
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Issue Date
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Due Date
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Total Amount
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Amount Due
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Status
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-slate-200 text-sm">
-            {SAMPLE_INVOICES.map((inv) => (
-              <tr key={inv.id} className="hover:bg-slate-50">
-                <td className="px-6 py-4 font-mono font-medium text-indigo-600 text-xs">{inv.id}</td>
-                <td className="px-6 py-4 font-medium text-slate-900">{inv.customer}</td>
-                <td className="px-6 py-4 text-slate-500">{formatDate(inv.date)}</td>
-                <td className="px-6 py-4 text-slate-500">{formatDate(inv.dueDate)}</td>
-                <td className="px-6 py-4 font-semibold text-slate-900">{formatCurrency(inv.total)}</td>
-                <td className="px-6 py-4 font-semibold text-slate-900">{formatCurrency(inv.amountDue)}</td>
-                <td className="px-6 py-4">
-                  <StatusBadge status={inv.status} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow isHoverable={false}>
+            <TableHead>Invoice Number</TableHead>
+            <TableHead>Customer</TableHead>
+            <TableHead>Issue Date</TableHead>
+            <TableHead>Due Date</TableHead>
+            <TableHead>Total Amount</TableHead>
+            <TableHead>Amount Due</TableHead>
+            <TableHead>Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {SAMPLE_INVOICES.map((inv) => (
+            <TableRow key={inv.id}>
+              <TableCell className="font-mono text-xs font-semibold text-slate-800">{inv.id}</TableCell>
+              <TableCell className="font-medium text-slate-900">{inv.customer}</TableCell>
+              <TableCell className="text-slate-500">{formatDate(inv.date)}</TableCell>
+              <TableCell className="text-slate-500">{formatDate(inv.dueDate)}</TableCell>
+              <TableCell className="font-semibold text-slate-900">{formatCurrency(inv.total)}</TableCell>
+              <TableCell className={inv.amountDue > 0 ? 'font-semibold text-rose-600' : 'text-slate-500'}>
+                {formatCurrency(inv.amountDue)}
+              </TableCell>
+              <TableCell>{getStatusBadge(inv.status)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

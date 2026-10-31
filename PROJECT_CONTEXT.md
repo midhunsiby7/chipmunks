@@ -43,13 +43,16 @@ Businesses handling recurring subscription models often struggle with fragmented
 ### Frontend
 | Component | Technology | Version | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Framework** | React | `^19.3.1` | Declarative component UI library |
-| **Build Tool** | Vite | `^8.3.5` | Next-generation dev server & production bundler |
-| **Styling** | Tailwind CSS | `^4.0.0` (`@tailwindcss/vite`) | Utility-first styling with zero runtime |
-| **Routing** | React Router DOM | `^7.1.0` | Client-side routing and layout management |
-| **HTTP Client** | Axios | `^1.7.9` | Interceptor-driven HTTP requests with token injection |
-| **Analytics Charts**| Recharts | `^2.15.0` | Responsive SVG/canvas analytics visualizations |
-| **Icons** | Lucide React | `^0.474.0` | Lightweight consistent iconography |
+| **Framework** | React | ^19.3.1 | Declarative component UI library |
+| **Build Tool** | Vite | ^8.3.5 | Next-generation dev server & production bundler |
+| **Styling** | Tailwind CSS | ^4.3.3 (@tailwindcss/vite) | Utility-first styling with zero runtime |
+| **Routing** | React Router DOM | ^7.18.5 | Client-side routing and layout management |
+| **HTTP Client** | Axios | ^1.21.0 | Interceptor-driven HTTP requests with token injection |
+| **Authentication**| Firebase Modular SDK | ^12.8.0 | Official client-side Firebase authentication |
+| **Analytics Charts**| Recharts | ^3.10.1 | Responsive SVG/canvas analytics visualizations |
+| **Icons** | Lucide React | ^1.65.0 | Lightweight consistent iconography |
+| **Linter** | Oxlint | ^1.89.0 | High-performance JavaScript/React linter |
+| **Payments (Planned)**| Razorpay Standard Checkout | Test Mode | Client checkout modal (Planned for Phase 10) |
 
 ### Backend
 | Component | Technology | Version | Purpose |
@@ -108,12 +111,16 @@ Brightloop uses a clean **Modular Monolith** pattern. The application is maintai
 * **Database & Config (`app/db/`, `app/core/config.py`)**: Connection pool management (`asyncpg` for request lifecycles, `psycopg2` for Alembic) and environment variable resolution.
 
 ### 3. Frontend Responsibilities & Layer Separation
-* **Pages (`src/pages/`)**: Route-level components combining layouts, state, and domain views.
-* **Components (`src/components/`)**: Reusable dumb UI components (cards, badges, tables, modals).
-* **Layouts (`src/layouts/`)**: Structural page chrome (navigation header, sidebar, footer).
-* **API Services (`src/api/client.js`)**: Axios instance configuring base URL, timeout, and JWT request/response interceptors.
-* **Hooks & Context (`src/hooks/`, `src/context/`)**: AuthContext managing login tokens and user sessions.
-* **Utilities (`src/utils/`)**: Formatters for currency, dates, and domain constants.
+* **UI Component Primitives (src/components/ui/)**: 14 accessible, reusable atomic/molecular components (Button, Input, Select, Textarea, Card, Badge, Modal, Table, SearchInput, PageHeader, LoadingIndicator, EmptyState, ErrorState, ConfirmationDialog).
+* **Error Isolation (src/components/common/ErrorBoundary.jsx)**: React Error Boundary isolating runtime component failures with user-friendly recovery.
+* **Layouts (src/layouts/MainLayout.jsx)**: Responsive shell hosting Navbar, collapsible mobile/desktop Sidebar, and router outlet.
+* **Navigation Configuration (src/routes/navConfig.js)**: Centralized 11-destination navigation map with role filters (dmin, staff, customer).
+* **Firebase Configuration (src/config/firebase.js)**: Official modular Firebase SDK initialization, singleton guarding, and environment key validation.
+* **Authentication Boundary (src/services/authService.js)**: Decoupled service layer handling Firebase Auth token retrieval and auth state events.
+* **API Client (src/services/apiClient.js & src/api/client.js)**: Centralized Axios client with automatic Bearer token injection, unauthorized (401) broadcast handling, and normalized ApiError structures.
+* **Pages (src/pages/)**: Route-level domain views (DashboardPage, SubscriptionsPage, InvoicesPage, ModulePlaceholderPage for uncompleted modules, LoginPage, NotFoundPage).
+* **Hooks & Context (src/hooks/, src/context/)**: AuthContext and useAuth hook managing user identity and roles.
+* **Utilities (src/utils/)**: Domain constants and formatters.
 
 ### 4. API Communication Approach
 * All API communication happens over HTTP/JSON under the `/api/v1` namespace.
@@ -190,38 +197,67 @@ D:\odo\
 │       └── test_health.py          # Verified health & root endpoint tests
 │
 └── frontend/
-    ├── .env.example                # Frontend environment template
-    ├── package.json                # Dependencies: React 19, Tailwind v4, Recharts, Router
+    ├── .env.example                # Frontend environment template (API base & Firebase keys)
+    ├── .gitignore                  # Frontend ignore rules (env, node_modules, dist)
+    ├── .oxlintrc.json              # Oxlint linter rules
+    ├── package.json                # Dependencies: React 19, Firebase SDK, Tailwind v4, Recharts, Router
     ├── vite.config.js              # Vite configuration with @tailwindcss/vite
     ├── index.html                  # HTML entry point
     └── src/
         ├── main.jsx                # React root bootstrap
-        ├── App.jsx                 # Route definitions and AuthProvider
+        ├── App.jsx                 # 11 navigation routes and AuthProvider wrapper
         ├── index.css               # Tailwind CSS v4 setup and typography
-        ├── App.css                 # Custom styling
+        ├── App.css                 # Custom styling enhancements
         ├── api/
-        │   └── client.js           # Axios client with bearer interceptor & health service
+        │   └── client.js           # Re-export client for backward compatibility
+        ├── config/
+        │   └── firebase.js         # Modular Firebase SDK setup, singleton, and env validation
+        ├── services/
+        │   ├── apiClient.js        # Centralized Axios client, Bearer injection, ApiError normalization
+        │   └── authService.js      # Decoupled Firebase Auth service boundary
+        ├── routes/
+        │   └── navConfig.js        # Centralized 11-destination navigation map & role filters
         ├── components/
-        │   ├── Navbar.jsx          # Top header with dynamic backend health status
-        │   ├── Sidebar.jsx         # Collapsible navigation menu
+        │   ├── Navbar.jsx          # Top header with dynamic health polling, search & profile
+        │   ├── Sidebar.jsx         # Responsive sidebar with drawer toggle for mobile
         │   ├── MetricCard.jsx      # Reusable dashboard metric card
-        │   └── StatusBadge.jsx     # Reusable colored status chip
+        │   ├── StatusBadge.jsx     # Reusable colored status chip
+        │   ├── common/
+        │   │   └── ErrorBoundary.jsx # React Error Boundary for isolated crash recovery
+        │   └── ui/                 # 14 Reusable UI primitives
+        │       ├── index.js        # Central export
+        │       ├── Button.jsx      # Variants: primary, secondary, outline, ghost, danger
+        │       ├── Input.jsx       # Label, error, helperText, left/right icons, useId()
+        │       ├── Select.jsx      # Styled select dropdown with chevron & options
+        │       ├── Textarea.jsx    # Multiline text input
+        │       ├── Card.jsx        # Card, CardHeader, CardTitle, CardContent, CardFooter
+        │       ├── Badge.jsx       # Variants: default, primary, success, warning, danger, info
+        │       ├── Modal.jsx       # Accessible modal dialog with backdrop & escape listener
+        │       ├── Table.jsx       # Table, TableHeader, TableBody, TableRow, TableHead, TableCell
+        │       ├── SearchInput.jsx # Input with Lucide search icon & clear button
+        │       ├── PageHeader.jsx  # Page title, description, breadcrumbs & action slot
+        │       ├── LoadingIndicator.jsx # Spinner & Skeleton placeholder loaders
+        │       ├── EmptyState.jsx  # Zero-state illustration with title, message & actions
+        │       ├── ErrorState.jsx  # Alert icon, error message & retry trigger
+        │       └── ConfirmationDialog.jsx # Modal for confirm/cancel actions
         ├── layouts/
-        │   └── MainLayout.jsx      # Shell layout hosting navbar, sidebar, and outlet
+        │   └── MainLayout.jsx      # Shell layout hosting Navbar, Sidebar, and ErrorBoundary
         ├── pages/
-        │   ├── DashboardPage.jsx   # Metrics, Recharts MRR area chart, status notice
-        │   ├── SubscriptionsPage.jsx # Subscriptions table and creation placeholder
-        │   ├── InvoicesPage.jsx    # Invoices table and creation placeholder
-        │   ├── LoginPage.jsx       # Authentication entry view
+        │   ├── DashboardPage.jsx   # Metrics, Recharts MRR area chart, transparency notice
+        │   ├── SubscriptionsPage.jsx # Subscriptions table with responsive Table & Badges
+        │   ├── InvoicesPage.jsx    # Invoices table with responsive Table & Badges
+        │   ├── ModulePlaceholderPage.jsx # Transparent placeholder for upcoming modules
+        │   ├── LoginPage.jsx       # Authentication entry view (Phase 2 integration)
         │   └── NotFoundPage.jsx    # 404 handler
         ├── hooks/
-        │   └── useAuth.js          # Authentication hook
+        │   └── useAuth.js          # Authentication hook consuming AuthContext
         ├── context/
-        │   └── AuthContext.jsx     # React Context for auth session management
+        │   ├── authContextInstance.js # Dedicated createContext instance
+        │   └── AuthContext.jsx     # AuthProvider with Firebase listener & 401 handler
         └── utils/
             ├── constants.js        # Domain intervals, statuses, and roles
             └── formatters.js       # Currency and date formatters
-```
+`
 
 ---
 
@@ -517,6 +553,28 @@ All endpoints below are prefixed with `/api/v1` and are marked with their implem
 
 ---
 
+### 10. Razorpay Standard Checkout Architecture (Planned Phase 10)
+For the hackathon demonstration, payments will use Razorpay Standard Checkout in Test Mode.
+The end-to-end architecture is strictly coordinated between frontend and backend:
+1. **Payment Initiation**: Frontend requests payment initiation from FastAPI backend for a specific invoice.
+2. **Order Creation**: FastAPI backend invokes Razorpay Orders API using server-side credentials and returns order_id, mount, and currency.
+3. **Checkout Modal**: Frontend receives order data and initializes Razorpay Standard Checkout modal with test keys.
+4. **Customer Payment**: Customer completes test payment in the modal.
+5. **Callback & Verification**: Razorpay returns 
+azorpay_payment_id, 
+azorpay_order_id, and 
+azorpay_signature to the frontend callback.
+6. **Signature Verification**: Frontend forwards callback data to FastAPI backend (POST /api/v1/payments/verify-razorpay).
+7. **Server-Side Authorization**: Backend independently verifies HMAC-SHA256 signature using RAZORPAY_KEY_SECRET.
+8. **Ledger Recording**: Backend records the verified transaction in Payment entity.
+9. **Invoice Balancing**: Backend reconciles mount_paid and mount_due on the corresponding Invoice.
+10. **Security Boundaries**:
+    - RAZORPAY_KEY_SECRET is NEVER exposed to the frontend.
+    - Frontend client is NEVER trusted as authoritative for payment success.
+    - Invoices are NEVER marked as paid directly from the frontend.
+
+---
+
 ## G. Implementation Status Matrix
 
 | Module / Component | Category | Current Status | Notes |
@@ -528,7 +586,11 @@ All endpoints below are prefixed with `/api/v1` and are marked with their implem
 | **SQLAlchemy 2.0 ORM Entity Models** | Database | **IMPLEMENTED** | All 13 core entities modeled in `app/models/` |
 | **Alembic Database Migration Runner**| Database | **IMPLEMENTED** | Async migration runner linked to model metadata |
 | **Docker Compose PostgreSQL Service**| Database | **IMPLEMENTED** | PostgreSQL 16 Alpine container configured |
-| **Frontend Layout & Navigation** | Frontend | **IMPLEMENTED** | MainLayout, Navbar, Sidebar, StatusBadge |
+| **Frontend Layout & Navigation** | Frontend | **IMPLEMENTED** | MainLayout, Navbar, Sidebar with 11 destinations, responsive drawer |
+| **Frontend UI Component Suite** | Frontend | **IMPLEMENTED** | 14 atomic/molecular primitives (Button, Input, Select, Modal, etc.) |
+| **Frontend Error Infrastructure** | Frontend | **IMPLEMENTED** | ErrorBoundary, ErrorState, EmptyState, LoadingIndicator, Skeleton |
+| **Frontend Centralized API Client** | Frontend | **IMPLEMENTED** | Base URL resolution, Bearer token injection, ApiError normalization |
+| **Firebase SDK & Auth Boundary** | Frontend | **IMPLEMENTED** | Modular Firebase SDK initialized, singleton guarding, authService |
 | **Frontend Recharts Integration** | Frontend | **IMPLEMENTED** | Working MRR AreaChart on DashboardPage |
 | **Frontend Axios API Client** | Frontend | **IMPLEMENTED** | Token interceptors & health service integration |
 | **User Authentication (JWT & Passwords)**| Backend | **PLANNED** | Security utilities implemented; endpoints planned |
