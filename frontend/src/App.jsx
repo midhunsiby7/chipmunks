@@ -15,6 +15,8 @@ import PlansPage from './pages/PlansPage';
 import TaxesPage from './pages/TaxesPage';
 import QuotationsPage from './pages/QuotationsPage';
 import DiscountsPage from './pages/DiscountsPage';
+import PaymentsPage from './pages/PaymentsPage';
+import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -23,7 +25,6 @@ import UnauthorizedPage from './pages/UnauthorizedPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 import {
-  CreditCard,
   BarChart3,
   Settings as SettingsIcon,
 } from 'lucide-react';
@@ -131,13 +132,17 @@ export default function App() {
               path="payments"
               element={
                 <RoleRoute allowedRoles={['admin', 'staff', 'customer']}>
-                  <ModulePlaceholderPage
-                    title="Payments & Reconciliation"
-                    section="Billing"
-                    plannedPhase="Phase 6"
-                    description="Record customer payments, track Razorpay test checkouts, and automatically reconcile invoice balances."
-                    icon={CreditCard}
-                  />
+                  <PaymentsPage />
+                </RoleRoute>
+              }
+            />
+
+            {/* 10. Profile & Settings (Admin, Staff, Customer) */}
+            <Route
+              path="profile"
+              element={
+                <RoleRoute allowedRoles={['admin', 'staff', 'customer']}>
+                  <ProfilePage />
                 </RoleRoute>
               }
             />

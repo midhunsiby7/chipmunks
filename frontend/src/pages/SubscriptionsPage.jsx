@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/ui/PageHeader';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -43,6 +43,7 @@ export default function SubscriptionsPage() {
   const role = user?.role || 'customer';
   const isCustomer = role === 'customer';
   const isAdminOrStaff = role === 'admin' || role === 'staff';
+  const navigate = useNavigate();
 
   // Read URL query params for deep-linking (e.g. from Quotations converted subscription)
   const initialSubscriptionId = searchParams.get('id') || '';
@@ -229,22 +230,28 @@ export default function SubscriptionsPage() {
     <div className="space-y-6">
       {/* PAGE HEADER */}
       <PageHeader
-        title="Subscriptions"
-        subtitle="Manage recurring customer contracts, billing cadences, and subscription lifecycles."
+        title={isAdminOrStaff ? 'Subscriptions' : 'My Subscriptions'}
+        subtitle={
+          isAdminOrStaff
+            ? 'Manage recurring customer contracts, billing cadences, and subscription lifecycles.'
+            : 'Inspect your active recurring service contracts, billing frequency, and renewal schedules.'
+        }
         badge={
           <Badge variant="indigo" size="sm">
             Phase 8 — Active
           </Badge>
         }
         actions={
-          <Button
-            variant="primary"
-            onClick={() => setIsFormOpen(true)}
-            className="flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Subscription</span>
-          </Button>
+          isAdminOrStaff ? (
+            <Button
+              variant="primary"
+              onClick={() => setIsFormOpen(true)}
+              className="flex items-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Subscription</span>
+            </Button>
+          ) : null
         }
       />
 
@@ -400,20 +407,26 @@ export default function SubscriptionsPage() {
       ) : subscriptions.length === 0 ? (
         <EmptyState
           icon={Repeat}
-          title={hasActiveFilters ? 'No Subscriptions Match Filters' : 'No Subscriptions Found'}
+          title={hasActiveFilters ? 'No Subscriptions Match Filters' : (isAdminOrStaff ? 'No Subscriptions Found' : 'No Active Subscriptions')}
           description={
             hasActiveFilters
               ? 'Try adjusting your search criteria, billing cadence, or status filter.'
-              : 'Provision recurring contracts using catalog plans or convert accepted quotations.'
+              : isAdminOrStaff
+              ? 'Provision recurring contracts using catalog plans or convert accepted quotations.'
+              : 'You do not have any active subscriptions yet. Subscriptions are automatically activated upon accepting quotation proposals.'
           }
           action={
             hasActiveFilters ? (
               <Button variant="secondary" onClick={handleResetFilters}>
                 Clear All Filters
               </Button>
-            ) : (
+            ) : isAdminOrStaff ? (
               <Button variant="primary" onClick={() => setIsFormOpen(true)}>
                 Provision First Subscription
+              </Button>
+            ) : (
+              <Button variant="secondary" onClick={() => navigate('/quotations')}>
+                View My Quotations
               </Button>
             )
           }

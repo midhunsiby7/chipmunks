@@ -1,5 +1,12 @@
 import { apiClient } from './apiClient';
 import { userService } from './userService';
+import { subscriptionService } from './subscriptionService';
+import { quotationService } from './quotationService';
+import { invoiceService } from './invoiceService';
+import { paymentService } from './paymentService';
+import { computeCustomerMetrics } from '../utils/customerPortalValidation';
+
+export { computeCustomerMetrics };
 
 /**
  * Dashboard Aggregation & Metrics Service
@@ -144,31 +151,65 @@ export const dashboardService = {
    * Strictly requests customer's own authenticated records.
    *
    * @returns {Promise<{
-   *   activeSubscriptions: number|null,
+   *   activeSubscriptions: number,
    *   upcomingRenewal: string|null,
-   *   outstandingAmount: number|null,
-   *   recentInvoices: Array<any>|null,
-   *   recentPayments: Array<any>|null,
+   *   outstandingAmount: number,
+   *   unpaidInvoicesCount: number,
+   *   pendingQuotations: number,
+   *   recentInvoices: Array<any>,
+   *   recentPayments: Array<any>,
+   *   activeSubsList: Array<any>,
    *   missingEndpoints: string[],
    * }>}
    */
   async getCustomerMetrics() {
     const missingEndpoints = [];
-    let customerPortalData = null;
+    let subscriptions = [];
+    let quotations = [];
+    let invoices = [];
+    let payments = [];
 
+    // 1. Fetch real customer active subscriptions
     try {
-      const res = await apiClient.get('/customer/portal/overview');
-      customerPortalData = res.data;
-    } catch {
-      missingEndpoints.push('GET /api/v1/customer/portal/overview (Scheduled for Phase 11)');
+      const subRes = await subscriptionService.listSubscriptions({ status: 'active', pageSize: 10 });
+      subscriptions = subRes.items || [];
+    } catch (err) {
+      console.warn('[Brightloop Dashboard] Could not fetch customer subscriptions:', err);
     }
 
+    // 2. Fetch real customer pending quotations
+    try {
+      const quoRes = await quotationService.listQuotations({ status: 'sent', pageSize: 10 });
+      quotations = quoRes.items || [];
+    } catch (err) {
+      console.warn('[Brightloop Dashboard] Could not fetch customer quotations:', err);
+    }
+
+    // 3. Fetch real customer invoices and compute outstanding balance
+    try {
+      const invRes = await invoiceService.listInvoices({ pageSize: 50 });
+      invoices = invRes.items || [];
+    } catch (err) {
+      console.warn('[Brightloop Dashboard] Could not fetch customer invoices:', err);
+    }
+
+    // 4. Fetch real customer payments
+    try {
+      const payRes = await paymentService.listPayments({ pageSize: 5 });
+      payments = payRes.items || [];
+    } catch (err) {
+      console.warn('[Brightloop Dashboard] Could not fetch customer payments:', err);
+    }
+
+    const computed = computeCustomerMetrics({
+      subscriptions,
+      quotations,
+      invoices,
+      payments,
+    });
+
     return {
-      activeSubscriptions: customerPortalData?.active_subscriptions ?? null,
-      upcomingRenewal: customerPortalData?.upcoming_renewal ?? null,
-      outstandingAmount: customerPortalData?.outstanding_amount ?? null,
-      recentInvoices: customerPortalData?.recent_invoices ?? null,
-      recentPayments: customerPortalData?.recent_payments ?? null,
+      ...computed,
       missingEndpoints,
     };
   },

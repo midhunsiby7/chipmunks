@@ -993,3 +993,155 @@ npm run dev
   - Unit Tests: 138 tests passing across 7 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`, `quotations.test.js`, `discounts.test.js`, `subscriptions.test.js`).
   - Linter: 0 warnings, 0 errors across 107 files (`oxlint`).
   - Production Build: 2,191 modules transformed cleanly in 3.52s (`vite build`).
+
+### Phase 9: Invoice Management and Recurring Billing (Completed)
+* **Invoice Catalogue (`InvoicesPage.jsx`)**:
+  - Full server-side paginated catalogue displaying Invoice Number (with quick copy), Customer Billed-To details, Related Subscription link, Issue & Due Dates, Total Amount, Balance Due (with Overdue indicator badge), and Status Badges.
+  - KPI summary metrics: Total Invoices, Total Receivables, Outstanding Overdue Balance, and Total Settled Invoices.
+  - Search filter with 300ms debouncing across invoice numbers, notes, and customer names/emails.
+  - Filter toolbar for Invoice Status (`all`, `draft`, `confirmed`, `issued`, `paid`, `partially_paid`, `overdue`, `cancelled`, `void`), Overdue quick toggle, and Customer Account filter (Admin & Staff only).
+  - Deep-linking URL param support (`?id=...`, `?subscription_id=...`, and `?customer_id=...`) for instant inspection from Subscriptions, Quotations, or Customer directories.
+  - Action buttons for Viewing full invoice specifications, direct HTML Print/PDF preview, and Cancellation triggers.
+* **Manual Invoice Creation (`InvoiceFormModal.jsx`)**:
+  - Section A (Recipient & Contract Scoping): Billed Customer dropdown (Admin/Staff), and optional dynamic Related Subscription selector linked to customer's active contracts.
+  - Section B (Terms, Dates & Currency): Issue Date (defaulting to today), Due Date, Currency selector (USD, INR, EUR, GBP), and Internal / Payment Notes.
+  - Section C (Itemized Billing Lines): Dynamic multi-line editor supporting description, integer quantity, unit price, and automatic line subtotal.
+  - Section D (Taxes & Promotional Deductions): Tax rule selector and live promotional coupon validation via `discountService.validateDiscountCode`.
+  - Financial Summary Card: Real-time calculation preview of Subtotal, Applied Discount deduction, Tax Liability, and Grand Total.
+* **Invoice Document Preview & Details (`InvoiceDetailsModal.jsx`)**:
+  - Header with Invoice Number, status badge, overdue warning alert (if past due with positive balance), and print action button.
+  - Company & Recipient Cards: Issuer info (Brightloop Technologies) and Customer billing contact details.
+  - Contract Metadata: Related subscription reference code, currency, issue date, and due date.
+  - Itemized Lines Table: Description, quantity, unit price, and line totals.
+  - Comprehensive Financial Breakdown: Subtotal, Discount deduction, Tax liability, Total Amount, Amount Paid, and Remaining Amount Due.
+  - Standalone Print-Ready Integration: Directly launches print preview via `GET /api/v1/invoices/{id}/html` opened in a dedicated browser window with automatic `@media print` styling and print dialog trigger.
+* **Invoice Cancellation (`InvoiceCancelDialog.jsx`)**:
+  - Confirmation dialog calling `POST /api/v1/invoices/{id}/cancel` for Admin and Staff.
+  - Strict business validation ensuring invoices with recorded payments (`amount_paid > 0`) or already cancelled invoices cannot be cancelled.
+* **Recurring Billing Automation Dashboard (`RecurringBillingModal.jsx`)**:
+  - Administrative execution trigger calling `POST /api/v1/invoices/generate-recurring`.
+  - Target Evaluation Date picker allowing billing simulation and on-demand billing run execution.
+  - Visual explanation of backend duplicate billing prevention architecture: database constraint `uq_invoice_sub_period` guarantees that duplicate invoices are never generated for the same subscription period.
+  - Live execution results report displaying count of newly generated invoices, skipped subscriptions, and execution feedback message.
+* **API Service Architecture (`invoiceService.js`)**:
+  - Centralized Axios client integrating `listInvoices`, `getInvoice`, `createInvoice`, `getInvoiceHtml`, `generateRecurringInvoices`, and `cancelInvoice`.
+* **Validation & Business Logic (`invoiceValidation.js`)**:
+  - Payload validation ensuring customer selection, valid due date, positive line quantities, and non-negative unit prices.
+  - Status badge metadata generator for all 8 backend statuses (`draft`, `confirmed`, `issued`, `paid`, `partially_paid`, `overdue`, `cancelled`, `void`).
+  - Overdue status detector (`isInvoiceOverdue`).
+  - Cancellation eligibility check (`canCancelInvoice`).
+  - Client-side financial estimation preview engine (`calculateEstimatedInvoiceTotals`).
+* **Route & Navigation Integration**:
+  - Promoted `invoices` in `navConfig.js` to active status for `admin`, `staff`, and `customer`.
+  - Mounted `<InvoicesPage />` behind `<RoleRoute allowedRoles={['admin', 'staff', 'customer']}>` in `App.jsx`.
+* **Scope Boundary & Missing Backend Endpoints Documented**:
+  - Payments and Razorpay checkout belong strictly to Phase 10 (no payment recording was implemented in Phase 9).
+  - `POST /api/v1/invoices/{id}/send`: No email dispatch endpoint exists in backend router (quotations has `/send`, but invoices does not).
+  - `PUT /api/v1/invoices/{id}`: Direct invoice editing is not exposed.
+* **Testing & Quality Assurance**:
+  - Unit Tests: 162 tests passing across 8 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`, `quotations.test.js`, `discounts.test.js`, `subscriptions.test.js`, `invoices.test.js`).
+  - Linter: 0 warnings, 0 errors across 114 files (`oxlint`).
+  - Production Build: 2,197 modules transformed cleanly in 3.59s (`vite build`).
+
+### Phase 10: Payment Management and Razorpay Integration (Completed)
+* **Payment Catalogue (`PaymentsPage.jsx`)**:
+  - Full server-side paginated catalogue displaying Payment Reference (`PAY-2026-XXXXX` with quick copy), Customer Billed-To details, Target Invoice link, Payment Date & Time, Payment Method with online/offline source badge, Transaction Amount, and Status Badges.
+  - KPI summary metrics: Total Settled Volume (INR/USD), Completed Transactions count, Pending / Processing count, and Razorpay Online vs Manual Offline split.
+  - Search filter with 300ms debouncing across payment references, transaction/gateway IDs, notes, and customer names/emails.
+  - Filter toolbar for Payment Status (`all`, `completed`, `pending`, `failed`, `refunded`), Payment Method (`all`, `razorpay`, `bank_transfer`, `credit_card`, `cash`, `manual`, `stripe`, `paypal`), Customer Account filter, and Invoice link filter.
+  - Deep-linking URL param support (`?id=...`, `?invoice_id=...`, and `?customer_id=...`) for instant inspection from Invoices or Customer directories.
+  - Action buttons for Viewing full payment transaction specifications and recording manual payments.
+* **Manual Payment Recording & Invoice Allocation (`PaymentRecordModal.jsx`)**:
+  - Customer selection filter and dynamic target invoice selector listing unpaid and partially paid invoices.
+  - Live Ledger Reconciliation Preview:
+    - Displays Invoice Total, Currently Paid, and Outstanding Balance Due.
+    - "Autofill Full Balance" shortcut button that autofills exact `amount_due`.
+    - Live transaction arrow displaying post-payment paid amount, remaining balance, and resulting status (`PAID` or `PARTIALLY_PAID`).
+    - Overpayment protection guard: entering amounts exceeding remaining `amount_due` is automatically flagged and blocked.
+  - Supported Payment Methods: Cash, Bank Transfer (NEFT/RTGS/IMPS), Credit / Debit Card (Offline), Manual Accounting Adjustment, Stripe, PayPal.
+  - Transaction Reference input (e.g. UTR / Cheque number), Currency selector, and internal accounting notes.
+* **Payment Details Inspection (`PaymentDetailsModal.jsx`)**:
+  - Header with Payment Reference, status badge (`Completed`, `Pending`, `Failed`, `Refunded`), payment source indicator (Razorpay Online vs Offline Manual), and one-click reference copy.
+  - Financial Hero: Transaction Amount, Currency, Payment Method, and recorded timestamp.
+  - Entity Cards: Customer account details and Target Invoice link with direct deep link navigation (`/invoices?id=...`).
+  - Audit & Gateway Identifiers: Gateway reference / Cheque number, Razorpay Order ID, Razorpay Payment ID, and verified HMAC-SHA256 signature hash.
+  - Internal / Transaction Notes display.
+* **Razorpay Standard Checkout Integration (`RazorpayCheckoutModal.jsx` & `razorpay.js`)**:
+  - Standard Checkout operating strictly in **TEST MODE ONLY** without custom collection of payment card credentials.
+  - Dynamic SDK Loader (`loadRazorpayCheckout`) safely loading official script from `https://checkout.razorpay.com/v1/checkout.js` with headless/SSR safety.
+  - Trusted Order Initiation: Calls `POST /api/v1/payments/razorpay/create-order` receiving trusted `order_id`, `amount` in paise, `currency`, `key_id`, `invoice_id`, and customer prefill information.
+  - Client-Side Checkout Execution: Launches Razorpay Checkout modal with prefilled customer details, brand theme, and event handlers for payment success, failure, and window dismissal.
+  - Cryptographic Signature Verification: Sends `{ razorpay_order_id, razorpay_payment_id, razorpay_signature }` to `POST /api/v1/payments/razorpay/verify`.
+  - Atomically balances the target invoice upon verification, prevents false positives, and provides clear success celebration or retry states.
+* **Invoice Reconciliation & Payment History Integration (`InvoiceDetailsModal.jsx`)**:
+  - Added dedicated "Payment History & Settlement Records" table to invoice details displaying all historical transactions against the invoice.
+  - Prominent "Pay Online (Razorpay)" action button for customer and staff when `amount_due > 0` and invoice is eligible.
+  - "Record Payment" administrative trigger for staff and admins to record offline settlements.
+  - Automatically re-evaluates overdue flags and updates ledger status upon payment completion.
+* **API Service Architecture (`paymentService.js`)**:
+  - Centralized Axios client integrating `listPayments`, `getPayment`, `recordPayment`, `createRazorpayOrder`, and `verifyRazorpayPayment`.
+* **Validation & Business Logic (`paymentValidation.js`)**:
+  - Payload validation ensuring valid invoice, positive non-zero amounts, overpayment prevention against `invoice.amount_due`, valid method enum, and 3-letter currency code.
+  - Visual status and method badge helpers (`getPaymentStatusBadge`, `getPaymentMethodBadge`).
+  - Deterministic balance reconciliation calculator (`calculateReconciledBalance`).
+  - Role-based authorization helpers (`canRecordManualPayment`, `canPayOnline`).
+* **Route & Navigation Integration**:
+  - Promoted `payments` in `navConfig.js` to active status for `admin`, `staff`, and `customer`.
+  - Replaced `ModulePlaceholderPage` at `/payments` with live `<PaymentsPage />` in `App.jsx`.
+* **Testing & Quality Assurance**:
+  - Unit Tests: 186 tests passing across 9 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`, `quotations.test.js`, `discounts.test.js`, `subscriptions.test.js`, `invoices.test.js`, `payments.test.js`).
+  - Linter: 0 warnings, 0 errors across 122 files (`oxlint`).
+  - Production Build: 2,204 modules transformed cleanly in 3.35s (`vite build`).
+
+### Phase 11: Customer Portal and Self-Service Experience (Completed)
+* **Customer Navigation & Role Isolation (`navConfig.js`, `Sidebar.jsx`, `Navbar.jsx`)**:
+  - Added `profile` (`/profile`) route and navigation entry to `NAV_ITEMS`.
+  - Configured `getNavItemsForRole('customer')` to strictly deliver self-service views with friendly, customer-centric labels in prescribed order:
+    1. `Overview` (`/`)
+    2. `My Quotations` (`/quotations`)
+    3. `My Subscriptions` (`/subscriptions`)
+    4. `My Invoices` (`/invoices`)
+    5. `My Payments` (`/payments`)
+    6. `My Profile` (`/profile`)
+  - Guaranteed administrative route isolation: links to Users/Customers, Products, Plans, Taxes, Discounts, Analytics, and System Settings are strictly excluded from the customer navigation.
+  - Linked the user avatar pill in `Navbar.jsx` to `/profile` for fast access across all authenticated roles.
+* **Customer Overview Dashboard (`CustomerDashboardView.jsx` & `dashboardService.js`)**:
+  - Replaced legacy mock metrics with live backend customer aggregation via `computeCustomerMetrics`:
+    - Queries active customer subscriptions, pending quotations, itemized invoices, and historical payments.
+    - Aggregates true outstanding balance (`amount_due` across unpaid/partially paid non-cancelled invoices).
+    - Identifies earliest upcoming subscription renewal date from active contracts.
+    - Zero fabricated statistics or simulated financial trends.
+  - Actionable customer notification banners:
+    - High-priority overdue/unpaid balance alert with direct "Pay Online" action.
+    - Pending quotation alert with direct "Review & Accept" action.
+  - Self-service quick-action hub providing deep links to Subscriptions, Quotations, Invoices, Payments, and Profile.
+  - Responsive tables for Subscribed Services, Recent Invoices, and Recent Payments with empty-state guidance.
+* **My Quotations Customer Experience (`QuotationDetailsModal.jsx` & `quotationValidation.js`)**:
+  - Maintained customer quotation acceptance and rejection capabilities for quotations in `sent` status.
+  - Guarded "Convert to Active Subscription" button with `canManage`: customers are strictly prevented from administratively converting accepted quotations into live subscriptions.
+  - Exported permission helpers `canCustomerRespond`, `canConvertToSubscription`, and `canCreateOrEditQuotation`.
+* **My Subscriptions Customer Experience (`SubscriptionsPage.jsx` & `subscriptionValidation.js`)**:
+  - Role-aware page title: renders "My Subscriptions" for customers and "Subscriptions" for admin/staff.
+  - Hidden administrative "New Subscription" provisioning button for customers.
+  - Contextual customer empty state offering direct navigation to "My Quotations" when no active subscriptions exist.
+  - Permitted self-service lifecycle controls (pause active subscriptions, resume paused subscriptions, cancel where permitted) while strictly prohibiting administrative closure (`canCloseSubscription`).
+* **My Invoices & My Payments Customer Experience (`InvoicesPage.jsx`, `PaymentsPage.jsx`, `InvoiceDetailsModal.jsx`)**:
+  - Customer invoice inspection with live overdue notices, financial breakdown, and print-ready HTML preview.
+  - Integrated online settlement via Razorpay Test Mode Checkout guarded by `canPayOnline` (strictly enforces invoice ownership `invoice.customer_id === currentUser.id`).
+  - Customer payment history inspection with status badges and transaction identifiers.
+  - Enforced prohibition of manual offline payment recording for customers (`canRecordManualPayment`).
+* **Customer Profile & Account Settings (`ProfilePage.jsx` & `customerPortalValidation.js`)**:
+  - Created `/profile` page mounted behind `<RoleRoute allowedRoles={['admin', 'staff', 'customer']}>`.
+  - Account Identity Hero displaying user name, email, role badge, and account status.
+  - Profile Attributes Card displaying Full Name, Email Address, Phone Number, Company / Organization, Role, and Registration Date.
+  - Firebase Password Reset Email Trigger: allows users to safely dispatch password reset emails to their registered address via Firebase Authentication SDK.
+  - Missing Backend Endpoint Documented: The backend router currently lacks `PUT /api/v1/users/me` or `PATCH /api/v1/users/me` (it only provides `GET /api/v1/users/me` and idempotent registration `POST /api/v1/users/profile`). The profile page renders attributes in verified read-only mode and informs the user of the missing update endpoint.
+* **Payment Security Audit Findings (Read-Only Review of Phase 10)**:
+  - Cryptographic Signature Verification: Backend uses `hmac.compare_digest` in `verify_razorpay_payment` to verify HMAC-SHA256 signatures generated from `order_id + "|" + payment_id` against the configured Razorpay key secret.
+  - Ownership Enforcement: Order creation and payment verification strictly authenticate invoice and order ownership against `current_user.id`.
+  - Overpayment & Replay Protection: Amount balance checks prevent overpayment, and unique constraints on `Payment.razorpay_payment_id` block transaction replay.
+  - Webhook Idempotency: Webhook endpoint validates raw payload signatures and stores processed event IDs in `webhook_events` to prevent duplicate processing.
+* **Testing & Quality Assurance**:
+  - Unit Tests: 213 tests passing across 10 test suites (`customerPortal.test.js` added with 27 individual assertions).
+  - Linter: 0 warnings, 0 errors across 125 files (`oxlint`).
+  - Production Build: 2,206 modules transformed cleanly in 3.50s (`vite build`).

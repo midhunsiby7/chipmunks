@@ -1,12 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { NAV_ITEMS } from '../routes/navConfig';
+import { getNavItemsForRole } from '../routes/navConfig';
 import { X } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onClose, currentRole = 'admin' }) {
   const normalizedRole = currentRole ? String(currentRole).toLowerCase() : 'customer';
-  // Filter items by current role
-  const allowedItems = NAV_ITEMS.filter((item) => item.roles.includes(normalizedRole));
+  // Filter items by current role and apply customer portal mapping
+  const allowedItems = getNavItemsForRole(normalizedRole);
 
   return (
     <>
