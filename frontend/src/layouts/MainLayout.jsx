@@ -3,10 +3,12 @@ import { Outlet } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import ErrorBoundary from '../components/common/ErrorBoundary';
+import { useAuth } from '../hooks/useAuth';
 
 export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const currentRole = 'admin'; // Prepared for dynamic AuthContext role integration
+  const { role, user, logout } = useAuth();
+  const currentRole = role || 'customer';
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased">
@@ -14,6 +16,8 @@ export default function MainLayout() {
       <Navbar
         onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
         currentRole={currentRole}
+        user={user}
+        onLogout={logout}
       />
 
       {/* Main Body Shell */}

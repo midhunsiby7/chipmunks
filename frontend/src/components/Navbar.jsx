@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { healthService } from '../services/apiClient';
-import { Menu, Bell, User, Search } from 'lucide-react';
+import { Menu, Bell, User, Search, LogOut } from 'lucide-react';
 import Badge from './ui/Badge';
 
-export default function Navbar({ onToggleSidebar, currentRole = 'admin' }) {
+export default function Navbar({ onToggleSidebar, currentRole = 'admin', user = null, onLogout }) {
   const [backendHealth, setBackendHealth] = useState({
     status: 'checking',
     text: 'Checking API...',
@@ -34,6 +34,15 @@ export default function Navbar({ onToggleSidebar, currentRole = 'admin' }) {
       isMounted = false;
     };
   }, []);
+
+  const roleStyles = {
+    admin: 'bg-purple-50 text-purple-700 border-purple-200',
+    staff: 'bg-blue-50 text-blue-700 border-blue-200',
+    customer: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  };
+
+  const currentRoleStyle = roleStyles[currentRole?.toLowerCase()] || roleStyles.customer;
+  const displayName = user?.full_name || user?.email || 'Authenticated User';
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 shadow-2xs">
@@ -104,17 +113,34 @@ export default function Navbar({ onToggleSidebar, currentRole = 'admin' }) {
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-600 rounded-full" />
         </button>
 
-        {/* User Profile Pill */}
+        {/* User Profile Pill & Role Badge */}
         <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
           <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-700 font-semibold text-xs">
             <User className="w-4 h-4" />
           </div>
           <div className="hidden xl:flex flex-col text-left">
-            <span className="text-xs font-semibold text-slate-900 leading-tight">Admin User</span>
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider capitalize">
+            <span className="text-xs font-semibold text-slate-900 leading-tight max-w-[140px] truncate">
+              {displayName}
+            </span>
+            <span
+              className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border w-fit ${currentRoleStyle}`}
+            >
               {currentRole}
             </span>
           </div>
+
+          {/* Quick Sign Out Action Button */}
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors focus:outline-none focus:ring-2 focus:ring-rose-400"
+              title="Sign Out of Brightloop"
+              aria-label="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </header>
