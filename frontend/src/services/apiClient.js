@@ -2,7 +2,22 @@ import axios from 'axios';
 import { authService } from './authService';
 
 const DEFAULT_API_BASE = 'http://localhost:8000/api/v1';
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE;
+
+function resolveApiBaseUrl() {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+    // If accessing through a remote tunnel or forwarded port, route via relative /api/v1
+    // to utilize Vite's dev server proxy and avoid unreachable client-side localhost requests
+    if (!isLocal && (!envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1'))) {
+      return '/api/v1';
+    }
+  }
+  return envUrl || DEFAULT_API_BASE;
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 /**
  * Normalized API Error class

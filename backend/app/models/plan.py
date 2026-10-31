@@ -1,7 +1,8 @@
 import enum
 import uuid
-from typing import List
-from sqlalchemy import Boolean, Enum, Integer, Numeric, String, Text
+from datetime import datetime
+from typing import Optional
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,8 +18,7 @@ class BillingInterval(str, enum.Enum):
 
 class Plan(Base, TimestampMixin):
     """
-    Subscription Plan entity specifying price, cadence, and recurring terms.
-    STATUS: PLANNED - Foundation entity schema.
+    Subscription Plan entity specifying price, cadence, minimum quantity, and availability terms.
     """
     __tablename__ = "plans"
 
@@ -30,9 +30,9 @@ class Plan(Base, TimestampMixin):
     )
     code: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     billing_interval: Mapped[BillingInterval] = mapped_column(
-        Enum(BillingInterval, name="billing_interval_enum"),
+        Enum(BillingInterval, name="billing_interval_enum", values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         index=True
     )
@@ -40,7 +40,15 @@ class Plan(Base, TimestampMixin):
     price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="USD", nullable=False)
     trial_period_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    minimum_quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    available_from: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    available_until: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    product_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("products.id", ondelete="SET NULL"),
+        nullable=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    # Relationships (PLANNED)
-    # subscriptions = relationship("Subscription", back_populates="plan")
+    # Relationships
+    product = relationship("Product", foreign_keys=[product_id])

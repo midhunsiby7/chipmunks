@@ -5,11 +5,31 @@ import { getAuth } from 'firebase/auth';
  * Firebase Client Configuration
  * Uses environment variables prefixed with VITE_ for Vite bundling.
  */
+/**
+ * Helper: read a VITE_ env variable from either Vite (browser) or Node.js (tests).
+ *
+ * Vite statically replaces every bare `import.meta.env.VITE_*` reference at
+ * build / serve time, so the browser bundle receives hard-coded string literals.
+ * In Node.js (test runner) `import.meta.env` does not exist; we fall back to
+ * `process.env` which is populated by `node --env-file=.env`.
+ */
+function env(key) {
+  // Vite static replacements – each reference MUST be a direct property access
+  // (no optional chaining on `import.meta.env`) so Vite's define plugin matches.
+  const viteVars = {
+    VITE_FIREBASE_API_KEY: typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_FIREBASE_API_KEY : undefined,
+    VITE_FIREBASE_AUTH_DOMAIN: typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_FIREBASE_AUTH_DOMAIN : undefined,
+    VITE_FIREBASE_PROJECT_ID: typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_FIREBASE_PROJECT_ID : undefined,
+    VITE_FIREBASE_APP_ID: typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_FIREBASE_APP_ID : undefined,
+  };
+  return viteVars[key] || (typeof process !== 'undefined' && process.env?.[key]) || '';
+}
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+  apiKey: env('VITE_FIREBASE_API_KEY'),
+  authDomain: env('VITE_FIREBASE_AUTH_DOMAIN'),
+  projectId: env('VITE_FIREBASE_PROJECT_ID'),
+  appId: env('VITE_FIREBASE_APP_ID'),
 };
 
 /**

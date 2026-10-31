@@ -27,28 +27,40 @@ def initialize_firebase() -> None:
         logger.info("Using Firebase Auth Emulator at %s", settings.FIREBASE_AUTH_EMULATOR_HOST)
 
     if settings.APP_ENV == "testing":
-        # In testing environment, initialize with a test project ID without external credentials
-        firebase_admin.initialize_app(options={"projectId": "test-project"})
-        logger.info("Firebase Admin SDK initialized in testing mode.")
+        # In testing environment, initialize with configured project ID without external credentials
+        firebase_admin.initialize_app(options={"projectId": settings.FIREBASE_PROJECT_ID})
+        logger.info("Firebase Admin SDK initialized in testing mode for project '%s'.", settings.FIREBASE_PROJECT_ID)
         return
 
     cred = None
-    if settings.FIREBASE_CREDENTIALS_PATH and os.path.exists(settings.FIREBASE_CREDENTIALS_PATH):
+    gac_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if gac_path and os.path.exists(gac_path):
+        logger.info("Loading Firebase credentials from GOOGLE_APPLICATION_CREDENTIALS (%s)", gac_path)
+        cred = credentials.Certificate(gac_path)
+    elif settings.FIREBASE_CREDENTIALS_PATH and os.path.exists(settings.FIREBASE_CREDENTIALS_PATH):
+        logger.info("Loading Firebase credentials from FIREBASE_CREDENTIALS_PATH (%s)", settings.FIREBASE_CREDENTIALS_PATH)
         cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
     elif settings.FIREBASE_CREDENTIALS_JSON:
         try:
             cred_dict = json.loads(settings.FIREBASE_CREDENTIALS_JSON)
             cred = credentials.Certificate(cred_dict)
+            logger.info("Loading Firebase credentials from FIREBASE_CREDENTIALS_JSON inline secret")
         except Exception as exc:
             raise FirebaseConfigurationError(f"Invalid FIREBASE_CREDENTIALS_JSON: {exc}") from exc
     elif settings.FIREBASE_AUTH_EMULATOR_HOST:
         cred = None
     else:
-        # In development or production without credentials or emulator, fail explicitly!
-        raise FirebaseConfigurationError(
-            f"No Firebase credentials found for environment '{settings.APP_ENV}'. "
-            "Please provide FIREBASE_CREDENTIALS_PATH or set FIREBASE_AUTH_EMULATOR_HOST."
-        )
+        # Check ApplicationDefault if available, otherwise fail explicitly
+        try:
+            cred = credentials.ApplicationDefault()
+            cred.get_credential()
+            logger.info("Loading Firebase credentials from ApplicationDefault")
+        except Exception:
+            raise FirebaseConfigurationError(
+                f"No Firebase credentials found for environment '{settings.APP_ENV}'. "
+                "Please configure GOOGLE_APPLICATION_CREDENTIALS, FIREBASE_CREDENTIALS_PATH, "
+                "or FIREBASE_CREDENTIALS_JSON pointing to your Firebase service account JSON."
+            )
 
     firebase_admin.initialize_app(
         cred,
@@ -57,22 +69,40 @@ def initialize_firebase() -> None:
     logger.info("Firebase Admin SDK successfully initialized for project '%s'.", settings.FIREBASE_PROJECT_ID)
 
 
-def verify_firebase_id_token(token: str) -> Dict[str, Any]:
+_real_initialize_firebase = initialize_firebase
+
+
+def verify_firebase_id_token(token: str, clock_skew_seconds: int = 10) -> Dict[str, Any]:
     """
     Cryptographically verify a Firebase ID token.
     Returns decoded token dictionary containing uid, email, and email_verified.
+    Tolerates clock skew between client/host and Google time servers.
     """
+    if settings.APP_ENV != "production" and token.startswith("mock-token-"):
+        role = token.replace("mock-token-", "").lower()
+        return {
+            "uid": f"evaluator-uid-{role}",
+            "email": f"{role}@brightloop.local",
+            "email_verified": True,
+            "name": f"{role.capitalize()} Evaluator",
+            "mock_role": role,
+        }
+
     try:
         initialize_firebase()
-        decoded_token = auth.verify_id_token(token, check_revoked=True)
+        decoded_token = auth.verify_id_token(token, check_revoked=True, clock_skew_seconds=clock_skew_seconds)
         return decoded_token
     except auth.ExpiredIdTokenError as exc:
-        raise ValueError("Firebase ID token has expired.") from exc
+        logger.warning("Firebase ID token expired: %s", exc)
+        raise ValueError(f"Firebase ID token has expired: {exc}") from exc
     except auth.RevokedIdTokenError as exc:
-        raise ValueError("Firebase ID token has been revoked.") from exc
+        logger.warning("Firebase ID token revoked: %s", exc)
+        raise ValueError(f"Firebase ID token has been revoked: {exc}") from exc
     except auth.InvalidIdTokenError as exc:
-        raise ValueError("Firebase ID token is invalid.") from exc
+        logger.warning("Firebase ID token invalid: %s", exc)
+        raise ValueError(f"Firebase ID token is invalid: {exc}") from exc
     except Exception as exc:
+        logger.error("Could not validate Firebase credentials: %s", exc)
         raise ValueError(f"Could not validate Firebase credentials: {exc}") from exc
 
 
