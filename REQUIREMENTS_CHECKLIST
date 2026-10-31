@@ -1,0 +1,94 @@
+Requirements Verification Checklist
+
+Purpose
+
+Track the Brightloop Subscription Management System requirements against the actual implementation. This checklist is maintained by Backend QA and Documentation.
+
+Status definitions
+
+- Implemented: Verified through code inspection or testing.
+- Partial: Some, but not all, required functionality is present.
+- Missing: Verified absent from the relevant implementation.
+- Not verified: Evidence is insufficient to determine the current status.
+
+1. Authentication and access control
+
+- [ ] Customer registration and unique email validation — Not verified
+- [ ] Password complexity validation — Not verified
+- [ ] Secure password storage and login — Not verified
+- [ ] Password reset workflow — Not verified
+- [ ] Admin, staff and customer roles — Not verified
+- [ ] Admin-only staff creation — Not verified
+- [ ] Customer data isolation — Not verified
+
+2. Products and plans
+
+- [ ] Product creation and editing — Not verified
+- [ ] Product types, sales prices, cost prices and notes — Not verified
+- [ ] Product variants and price adjustments — Not verified
+- [ ] Daily, weekly, monthly and yearly billing frequencies — Not verified
+- [ ] Minimum quantities and availability dates — Not verified
+- [ ] Configurable renewal, pause and closure rules — Not verified
+
+3. Quotations and subscriptions
+
+- [ ] Quotation templates and validity periods — Not verified
+- [ ] Subscription identifiers and customer associations — Not verified
+- [ ] Start dates, expiry dates and payment terms — Not verified
+- [ ] Product lines, quantities, taxes and totals — Not verified
+- [ ] Valid subscription state transitions — Not verified
+- [ ] Renewal, pause and early cancellation — Not verified
+
+4. Invoices and recurring billing
+
+- [ ] Automatic invoice generation — Not verified
+- [ ] Correct invoice lines and totals — Not verified
+- [ ] Automatic tax calculations — Not verified
+- [ ] Invoice confirmation, cancellation and printing — Not verified
+- [ ] Invoice sending — Not verified
+- [ ] Duplicate billing prevention — Not verified
+- [ ] Safe recovery after failed billing runs — Not verified
+
+5. Discounts
+
+- [ ] Admin-controlled discount rules — Not verified
+- [ ] Fixed and percentage discounts — Not verified
+- [ ] Minimum purchase or quantity rules — Not verified
+- [ ] Start dates, end dates and usage limits — Not verified
+- [ ] Product-specific and subscription-wide discounts — Not verified
+- [ ] Automatic discount application and expiry — Not verified
+
+6. Payments
+
+- [ ] Payment method, amount, date and notes — Not verified
+- [ ] Payment-to-invoice matching — Not verified
+- [ ] Paid and outstanding invoice tracking — Not verified
+- [ ] Overdue invoice identification — Not verified
+- [ ] Duplicate payment protection — Not verified
+
+7. Customer portal and reporting
+
+- [ ] Customer subscription overview — Not verified
+- [ ] Customer invoice and payment history — Not verified
+- [ ] Permitted subscription changes — Not verified
+- [ ] Active subscription reporting — Not verified
+- [ ] Collected revenue and outstanding balances — Not verified
+- [ ] Overdue invoice reporting and filters — Not verified
+
+8. Performance and reliability
+
+- [ ] Page response time under two seconds — Not verified
+- [ ] Database indexes and pagination — Not verified
+- [ ] Concurrent billing safety — Not verified
+- [ ] Validation and error handling — Not verified
+- [ ] Automated tests for critical workflows — Not verified
+
+Initial observations
+
+The inspected API router registers the health router, while business routers were commented out in the inspected version. A health endpoint is present. Model and schema files exist for several business entities, but their functionality requires further verification.
+
+File existence alone does not prove that a feature is implemented.
+
+QA update log
+
+For each update, record the feature inspected, evidence, test result, date and related issue if applicable.
