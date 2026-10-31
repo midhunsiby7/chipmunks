@@ -11,7 +11,15 @@ from app.schemas.subscription import (
     SubscriptionUpdate,
 )
 from app.schemas.token import Token, TokenPayload
-from app.schemas.user import UserBase, UserCreate, UserResponse, UserUpdate
+from app.schemas.user import (
+    CustomerProfileCreateRequest,
+    ResendLinksResponse,
+    StaffCreateRequest,
+    StaffCreateResponse,
+    UserBase,
+    UserResponse,
+    UserUpdate,
+)
 
 __all__ = [
     "HealthResponse",
@@ -20,7 +28,10 @@ __all__ = [
     "Token",
     "TokenPayload",
     "UserBase",
-    "UserCreate",
+    "CustomerProfileCreateRequest",
+    "StaffCreateRequest",
+    "StaffCreateResponse",
+    "ResendLinksResponse",
     "UserUpdate",
     "UserResponse",
     "SubscriptionBase",
