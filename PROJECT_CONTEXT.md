@@ -993,3 +993,52 @@ npm run dev
   - Unit Tests: 138 tests passing across 7 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`, `quotations.test.js`, `discounts.test.js`, `subscriptions.test.js`).
   - Linter: 0 warnings, 0 errors across 107 files (`oxlint`).
   - Production Build: 2,191 modules transformed cleanly in 3.52s (`vite build`).
+
+### Phase 9: Invoice Management and Recurring Billing (Completed)
+* **Invoice Catalogue (`InvoicesPage.jsx`)**:
+  - Full server-side paginated catalogue displaying Invoice Number (with quick copy), Customer Billed-To details, Related Subscription link, Issue & Due Dates, Total Amount, Balance Due (with Overdue indicator badge), and Status Badges.
+  - KPI summary metrics: Total Invoices, Total Receivables, Outstanding Overdue Balance, and Total Settled Invoices.
+  - Search filter with 300ms debouncing across invoice numbers, notes, and customer names/emails.
+  - Filter toolbar for Invoice Status (`all`, `draft`, `confirmed`, `issued`, `paid`, `partially_paid`, `overdue`, `cancelled`, `void`), Overdue quick toggle, and Customer Account filter (Admin & Staff only).
+  - Deep-linking URL param support (`?id=...`, `?subscription_id=...`, and `?customer_id=...`) for instant inspection from Subscriptions, Quotations, or Customer directories.
+  - Action buttons for Viewing full invoice specifications, direct HTML Print/PDF preview, and Cancellation triggers.
+* **Manual Invoice Creation (`InvoiceFormModal.jsx`)**:
+  - Section A (Recipient & Contract Scoping): Billed Customer dropdown (Admin/Staff), and optional dynamic Related Subscription selector linked to customer's active contracts.
+  - Section B (Terms, Dates & Currency): Issue Date (defaulting to today), Due Date, Currency selector (USD, INR, EUR, GBP), and Internal / Payment Notes.
+  - Section C (Itemized Billing Lines): Dynamic multi-line editor supporting description, integer quantity, unit price, and automatic line subtotal.
+  - Section D (Taxes & Promotional Deductions): Tax rule selector and live promotional coupon validation via `discountService.validateDiscountCode`.
+  - Financial Summary Card: Real-time calculation preview of Subtotal, Applied Discount deduction, Tax Liability, and Grand Total.
+* **Invoice Document Preview & Details (`InvoiceDetailsModal.jsx`)**:
+  - Header with Invoice Number, status badge, overdue warning alert (if past due with positive balance), and print action button.
+  - Company & Recipient Cards: Issuer info (Brightloop Technologies) and Customer billing contact details.
+  - Contract Metadata: Related subscription reference code, currency, issue date, and due date.
+  - Itemized Lines Table: Description, quantity, unit price, and line totals.
+  - Comprehensive Financial Breakdown: Subtotal, Discount deduction, Tax liability, Total Amount, Amount Paid, and Remaining Amount Due.
+  - Standalone Print-Ready Integration: Directly launches print preview via `GET /api/v1/invoices/{id}/html` opened in a dedicated browser window with automatic `@media print` styling and print dialog trigger.
+* **Invoice Cancellation (`InvoiceCancelDialog.jsx`)**:
+  - Confirmation dialog calling `POST /api/v1/invoices/{id}/cancel` for Admin and Staff.
+  - Strict business validation ensuring invoices with recorded payments (`amount_paid > 0`) or already cancelled invoices cannot be cancelled.
+* **Recurring Billing Automation Dashboard (`RecurringBillingModal.jsx`)**:
+  - Administrative execution trigger calling `POST /api/v1/invoices/generate-recurring`.
+  - Target Evaluation Date picker allowing billing simulation and on-demand billing run execution.
+  - Visual explanation of backend duplicate billing prevention architecture: database constraint `uq_invoice_sub_period` guarantees that duplicate invoices are never generated for the same subscription period.
+  - Live execution results report displaying count of newly generated invoices, skipped subscriptions, and execution feedback message.
+* **API Service Architecture (`invoiceService.js`)**:
+  - Centralized Axios client integrating `listInvoices`, `getInvoice`, `createInvoice`, `getInvoiceHtml`, `generateRecurringInvoices`, and `cancelInvoice`.
+* **Validation & Business Logic (`invoiceValidation.js`)**:
+  - Payload validation ensuring customer selection, valid due date, positive line quantities, and non-negative unit prices.
+  - Status badge metadata generator for all 8 backend statuses (`draft`, `confirmed`, `issued`, `paid`, `partially_paid`, `overdue`, `cancelled`, `void`).
+  - Overdue status detector (`isInvoiceOverdue`).
+  - Cancellation eligibility check (`canCancelInvoice`).
+  - Client-side financial estimation preview engine (`calculateEstimatedInvoiceTotals`).
+* **Route & Navigation Integration**:
+  - Promoted `invoices` in `navConfig.js` to active status for `admin`, `staff`, and `customer`.
+  - Mounted `<InvoicesPage />` behind `<RoleRoute allowedRoles={['admin', 'staff', 'customer']}>` in `App.jsx`.
+* **Scope Boundary & Missing Backend Endpoints Documented**:
+  - Payments and Razorpay checkout belong strictly to Phase 10 (no payment recording was implemented in Phase 9).
+  - `POST /api/v1/invoices/{id}/send`: No email dispatch endpoint exists in backend router (quotations has `/send`, but invoices does not).
+  - `PUT /api/v1/invoices/{id}`: Direct invoice editing is not exposed.
+* **Testing & Quality Assurance**:
+  - Unit Tests: 162 tests passing across 8 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`, `quotations.test.js`, `discounts.test.js`, `subscriptions.test.js`, `invoices.test.js`).
+  - Linter: 0 warnings, 0 errors across 114 files (`oxlint`).
+  - Production Build: 2,197 modules transformed cleanly in 3.59s (`vite build`).
