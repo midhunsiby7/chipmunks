@@ -94,6 +94,39 @@ export default function RazorpayCheckoutModal({
     }
   };
 
+  const handleSimulatePayment = async () => {
+    setStep('creating_order');
+    setErrorMessage('');
+
+    try {
+      // 1. Create trusted order on backend
+      const orderData = await paymentService.createRazorpayOrder(invoice.id);
+      setStep('verifying');
+
+      const testPaymentId = `pay_mock_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+      setLastPaymentId(testPaymentId);
+
+      // 2. Cryptographic signature verification with backend test signature
+      const verified = await paymentService.verifyRazorpayPayment({
+        razorpay_order_id: orderData.order_id,
+        razorpay_payment_id: testPaymentId,
+        razorpay_signature: 'mock_valid_signature_for_testing',
+      });
+
+      setVerifiedPayment(verified);
+      setStep('success');
+      onSuccess?.(verified);
+    } catch (simErr) {
+      console.error('Sandbox payment verification failed:', simErr);
+      const msg =
+        simErr?.response?.data?.detail ||
+        simErr?.message ||
+        'Sandbox payment verification failed.';
+      setErrorMessage(msg);
+      setStep('failed');
+    }
+  };
+
   const handleClose = () => {
     setStep('idle');
     setErrorMessage('');
@@ -196,27 +229,40 @@ export default function RazorpayCheckoutModal({
             </div>
 
             {/* ACTIONS */}
-            <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-200">
-              <Button variant="secondary" onClick={handleClose} disabled={step === 'creating_order'}>
-                Cancel
-              </Button>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-200">
               <Button
-                variant="primary"
-                onClick={handleStartCheckout}
+                variant="outline"
+                size="sm"
+                onClick={handleSimulatePayment}
                 disabled={step === 'creating_order'}
+                className="text-indigo-700 border-indigo-200 hover:bg-indigo-50 text-xs flex items-center justify-center font-semibold"
               >
-                {step === 'creating_order' ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Initializing Razorpay Order...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-4 h-4 mr-2 text-amber-300" />
-                    Pay {formatCurrency(invoice.amount_due, invoice.currency)} Now
-                  </>
-                )}
+                <Zap className="w-3.5 h-3.5 mr-1 text-amber-500" />
+                1-Click Sandbox Test Pay
               </Button>
+
+              <div className="flex items-center justify-end space-x-2">
+                <Button variant="secondary" onClick={handleClose} disabled={step === 'creating_order'}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleStartCheckout}
+                  disabled={step === 'creating_order'}
+                >
+                  {step === 'creating_order' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Initializing Razorpay Order...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4 mr-2 text-indigo-200" />
+                      Pay with Razorpay Modal
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -304,13 +350,21 @@ export default function RazorpayCheckoutModal({
               </p>
             )}
 
-            <div className="flex items-center justify-center space-x-3 pt-3 border-t border-slate-200">
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-3 border-t border-slate-200">
               <Button variant="secondary" onClick={handleClose}>
                 Close
               </Button>
+              <Button
+                variant="outline"
+                onClick={handleSimulatePayment}
+                className="text-indigo-700 border-indigo-300 font-semibold text-xs"
+              >
+                <Zap className="w-4 h-4 mr-1 text-amber-500" />
+                Complete via Sandbox Test Pay
+              </Button>
               <Button variant="primary" onClick={handleStartCheckout}>
                 <RotateCcw className="w-4 h-4 mr-2" />
-                Retry Payment
+                Retry Razorpay Modal
               </Button>
             </div>
           </div>

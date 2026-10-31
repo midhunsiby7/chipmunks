@@ -5,6 +5,7 @@ import { quotationService } from './quotationService';
 import { invoiceService } from './invoiceService';
 import { paymentService } from './paymentService';
 import { computeCustomerMetrics } from '../utils/customerPortalValidation';
+import { fetchAllPages } from '../utils/paginationHelper';
 
 export { computeCustomerMetrics };
 
@@ -95,11 +96,11 @@ export const dashboardService = {
       totalUsers,
       analyticsAvailable: Boolean(analyticsData),
       mrr: analyticsData?.mrr ?? null,
-      activeSubscriptions: subscriptionSummary?.active_count ?? null,
-      collectedRevenue: invoiceSummary?.collected_revenue ?? null,
-      pendingInvoices: invoiceSummary?.pending_count ?? null,
-      overdueInvoices: invoiceSummary?.overdue_count ?? null,
-      monthlyRevenueTrend: analyticsData?.monthly_revenue_trend ?? null,
+      activeSubscriptions: analyticsData?.active_subscriptions ?? subscriptionSummary?.active_count ?? null,
+      collectedRevenue: analyticsData?.total_collections ?? invoiceSummary?.collected_revenue ?? null,
+      pendingInvoices: analyticsData?.outstanding_invoices_count ?? invoiceSummary?.pending_count ?? null,
+      overdueInvoices: analyticsData?.overdue_invoices_count ?? invoiceSummary?.overdue_count ?? null,
+      monthlyRevenueTrend: analyticsData?.revenue_trends ?? null,
       subscriptionDistribution: subscriptionSummary?.distribution ?? null,
       missingEndpoints,
     };
@@ -168,27 +169,31 @@ export const dashboardService = {
     let quotations = [];
     let invoices = [];
     let payments = [];
+    let totalActiveSubscriptions = null;
+    let totalPendingQuotations = null;
 
-    // 1. Fetch real customer active subscriptions
+    // 1. Fetch real customer active subscriptions (with full count metadata)
     try {
-      const subRes = await subscriptionService.listSubscriptions({ status: 'active', pageSize: 10 });
+      const subRes = await subscriptionService.listSubscriptions({ status: 'active', pageSize: 100 });
       subscriptions = subRes.items || [];
+      totalActiveSubscriptions = subRes.total ?? subscriptions.length;
     } catch (err) {
       console.warn('[Brightloop Dashboard] Could not fetch customer subscriptions:', err);
     }
 
-    // 2. Fetch real customer pending quotations
+    // 2. Fetch real customer pending quotations (with full count metadata)
     try {
-      const quoRes = await quotationService.listQuotations({ status: 'sent', pageSize: 10 });
+      const quoRes = await quotationService.listQuotations({ status: 'sent', pageSize: 100 });
       quotations = quoRes.items || [];
+      totalPendingQuotations = quoRes.total ?? quotations.length;
     } catch (err) {
       console.warn('[Brightloop Dashboard] Could not fetch customer quotations:', err);
     }
 
-    // 3. Fetch real customer invoices and compute outstanding balance
+    // 3. Fetch all customer invoices across all pages without artificial caps
     try {
-      const invRes = await invoiceService.listInvoices({ pageSize: 50 });
-      invoices = invRes.items || [];
+      const invResult = await fetchAllPages((p) => invoiceService.listInvoices(p), { pageSize: 100 });
+      invoices = invResult.items;
     } catch (err) {
       console.warn('[Brightloop Dashboard] Could not fetch customer invoices:', err);
     }
@@ -206,6 +211,8 @@ export const dashboardService = {
       quotations,
       invoices,
       payments,
+      totalActiveSubscriptions,
+      totalPendingQuotations,
     });
 
     return {

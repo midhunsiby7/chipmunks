@@ -25,6 +25,15 @@ import RecentActivityList from './RecentActivityList';
 import DateRangeFilter from './DateRangeFilter';
 import DashboardLoadingState from './DashboardLoadingState';
 import CreateStaffModal from '../users/CreateStaffModal';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from 'recharts';
 import { dashboardService } from '../../services/dashboardService';
 import { formatCurrency, formatNumber } from '../../utils/formatters';
 
@@ -176,9 +185,23 @@ export default function AdminDashboardView() {
           title="Monthly Revenue Trend (MRR)"
           description="Historical revenue performance formatted in Indian Rupees (₹)"
           action={<DateRangeFilter value={dateRange} onChange={setDateRange} />}
-          isPendingApi={!metrics?.monthlyRevenueTrend}
-          pendingReason="Time-series revenue aggregation API (GET /api/v1/analytics/mrr) scheduled for Phase 7."
-        />
+          isPendingApi={!metrics?.monthlyRevenueTrend || metrics.monthlyRevenueTrend.length === 0}
+          pendingReason="Time-series revenue aggregation API (GET /api/v1/analytics/dashboard) awaiting data."
+        >
+          {metrics?.monthlyRevenueTrend && metrics.monthlyRevenueTrend.length > 0 && (
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={metrics.monthlyRevenueTrend}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="date_label" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <Tooltip formatter={(val) => formatCurrency(val, 'INR')} />
+                  <Area type="monotone" dataKey="mrr" stroke="#4f46e5" fill="#e0e7ff" name="MRR" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </DashboardChartCard>
 
         <DashboardChartCard
           title="Customer Growth Velocity"

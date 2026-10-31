@@ -72,6 +72,7 @@ export default function SubscriptionsPage() {
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedPlanIdForModal, setSelectedPlanIdForModal] = useState('');
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedSub, setSelectedSub] = useState(null);
   const [actionDialog, setActionDialog] = useState({
@@ -242,16 +243,17 @@ export default function SubscriptionsPage() {
           </Badge>
         }
         actions={
-          isAdminOrStaff ? (
-            <Button
-              variant="primary"
-              onClick={() => setIsFormOpen(true)}
-              className="flex items-center space-x-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Subscription</span>
-            </Button>
-          ) : null
+          <Button
+            variant="primary"
+            onClick={() => {
+              setSelectedPlanIdForModal('');
+              setIsFormOpen(true);
+            }}
+            className="flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{isCustomer ? 'Subscribe to a Plan' : 'New Subscription'}</span>
+          </Button>
         }
       />
 
@@ -421,13 +423,24 @@ export default function SubscriptionsPage() {
                 Clear All Filters
               </Button>
             ) : isAdminOrStaff ? (
-              <Button variant="primary" onClick={() => setIsFormOpen(true)}>
+              <Button variant="primary" onClick={() => {
+                setSelectedPlanIdForModal('');
+                setIsFormOpen(true);
+              }}>
                 Provision First Subscription
               </Button>
             ) : (
-              <Button variant="secondary" onClick={() => navigate('/quotations')}>
-                View My Quotations
-              </Button>
+              <div className="flex items-center space-x-3">
+                <Button variant="primary" onClick={() => {
+                  setSelectedPlanIdForModal('');
+                  setIsFormOpen(true);
+                }}>
+                  Choose a Plan to Subscribe
+                </Button>
+                <Button variant="secondary" onClick={() => navigate('/quotations')}>
+                  View My Quotations
+                </Button>
+              </div>
             )
           }
         />
@@ -643,8 +656,14 @@ export default function SubscriptionsPage() {
       {isFormOpen && (
         <SubscriptionFormModal
           isOpen={isFormOpen}
-          onClose={() => setIsFormOpen(false)}
-          onSuccess={fetchSubscriptions}
+          onClose={() => {
+            setIsFormOpen(false);
+            setSelectedPlanIdForModal('');
+          }}
+          initialPlanId={selectedPlanIdForModal}
+          onSuccess={() => {
+            fetchSubscriptions();
+          }}
         />
       )}
 
