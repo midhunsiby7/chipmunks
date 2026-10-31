@@ -279,7 +279,18 @@ class PaymentService:
         if not invoice:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invoice not found.")
 
+        if invoice.status in (InvoiceStatus.PAID, InvoiceStatus.CANCELLED, InvoiceStatus.VOID):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot apply payment to invoice with status '{invoice.status.value}'.",
+            )
+
         pay_amount = Decimal(str(rzp_order.amount))
+        if pay_amount > Decimal(str(invoice.amount_due)):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Payment amount (${pay_amount}) exceeds outstanding invoice amount due (${invoice.amount_due}).",
+            )
 
         count = await db.scalar(select(func.count()).select_from(Payment)) or 0
         pay_ref = generate_payment_reference(count + 1)
@@ -325,6 +336,7 @@ class PaymentService:
     ) -> dict:
         """
         Processes Razorpay Webhook events idempotently with signature verification.
+        Ensures failed events never mark invoices paid, and captured events reconcile balance safely.
         """
         secret = settings.RAZORPAY_WEBHOOK_SECRET
         if secret and signature:
@@ -352,9 +364,55 @@ class PaymentService:
             payload=raw_body.decode("utf-8")[:1000],
         )
         db.add(webhook_rec)
-        await db.commit()
 
+        # Handle event side effects
+        if event_type == "payment.failed":
+            logger.warning("Received payment.failed webhook for event %s. Ensuring invoice is untouched.", event_id)
+
+        elif event_type in ("payment.captured", "order.paid"):
+            entity = event_data.get("payload", {}).get("payment", {}).get("entity", {})
+            rzp_payment_id = entity.get("id")
+            rzp_order_id = entity.get("order_id")
+
+            if rzp_order_id:
+                rzp_order = await db.scalar(
+                    select(RazorpayOrder).where(RazorpayOrder.order_id == rzp_order_id)
+                )
+                if rzp_order and rzp_order.status != "paid":
+                    invoice = await db.scalar(select(Invoice).where(Invoice.id == rzp_order.invoice_id))
+                    if invoice and invoice.status not in (InvoiceStatus.PAID, InvoiceStatus.CANCELLED, InvoiceStatus.VOID):
+                        existing_p = await db.scalar(
+                            select(Payment).where(Payment.razorpay_payment_id == rzp_payment_id)
+                        )
+                        if not existing_p:
+                            pay_amount = Decimal(str(rzp_order.amount))
+                            count = await db.scalar(select(func.count()).select_from(Payment)) or 0
+                            payment = Payment(
+                                payment_reference=generate_payment_reference(count + 1),
+                                invoice_id=invoice.id,
+                                customer_id=invoice.customer_id,
+                                amount=pay_amount,
+                                currency=rzp_order.currency,
+                                payment_method=PaymentMethod.RAZORPAY,
+                                status=PaymentStatus.COMPLETED,
+                                paid_at=datetime.now(timezone.utc),
+                                gateway_transaction_id=rzp_payment_id,
+                                razorpay_order_id=rzp_order_id,
+                                razorpay_payment_id=rzp_payment_id,
+                                notes="Captured via Razorpay webhook",
+                            )
+                            db.add(payment)
+                            invoice.amount_paid = (Decimal(str(invoice.amount_paid)) + pay_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                            invoice.amount_due = max(Decimal("0.00"), (Decimal(str(invoice.total_amount)) - invoice.amount_paid).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+                            if invoice.amount_due <= Decimal("0.00"):
+                                invoice.status = InvoiceStatus.PAID
+                            else:
+                                invoice.status = InvoiceStatus.PARTIALLY_PAID
+                            rzp_order.status = "paid"
+
+        await db.commit()
         return {"status": "processed", "event_id": event_id, "event_type": event_type}
+
 
 
 payment_service = PaymentService()

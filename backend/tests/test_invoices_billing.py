@@ -242,3 +242,103 @@ async def test_recurring_billing_skips_paused_subscriptions(async_client, db_ses
     )
     assert gen_resp.status_code == 200
     assert gen_resp.json()["invoices_generated"] == 0
+
+
+@pytest.mark.asyncio
+async def test_recurring_billing_consecutive_periods(async_client, db_session, seed_data):
+    cust1 = seed_data["cust1"]
+    plan = seed_data["plan"]
+    admin_headers = {"Authorization": "Bearer admin-inv-uid"}
+
+    now = datetime.now(timezone.utc)
+    two_months_ago = now - timedelta(days=65)
+    one_month_ago = now - timedelta(days=33)
+
+    # Subscription due for 2 consecutive monthly cycles
+    sub = Subscription(
+        subscription_code="SUB-CONSECUTIVE-01",
+        customer_id=cust1.id,
+        plan_id=plan.id,
+        status=SubscriptionStatus.ACTIVE,
+        billing_interval=BillingInterval.MONTHLY,
+        quantity=1,
+        start_date=two_months_ago,
+        next_billing_date=one_month_ago,
+        current_period_start=two_months_ago,
+        current_period_end=one_month_ago,
+        subtotal=Decimal("100.00"),
+        total_amount=Decimal("100.00"),
+    )
+    db_session.add(sub)
+    await db_session.flush()
+
+    sub_line = SubscriptionLine(
+        subscription_id=sub.id,
+        description="Monthly Pro Engine",
+        quantity=1,
+        unit_price=Decimal("100.00"),
+        line_total=Decimal("100.00"),
+    )
+    db_session.add(sub_line)
+    await db_session.commit()
+
+    # Trigger recurring billing up to today
+    gen_resp = await async_client.post(
+        "/api/v1/invoices/generate-recurring",
+        json={"target_date": now.isoformat()},
+        headers=admin_headers,
+    )
+    assert gen_resp.status_code == 200
+    gen_data = gen_resp.json()
+    # Must generate 2 invoices for the two consecutive periods without skipping
+    assert gen_data["invoices_generated"] == 2
+    assert len(gen_data["invoice_ids"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_overdue_invoice_transition_and_html_print(async_client, db_session, seed_data):
+    admin = seed_data["admin"]
+    cust1 = seed_data["cust1"]
+    cust2 = seed_data["cust2"]
+    cust1_headers = {"Authorization": "Bearer cust1-inv-uid"}
+    cust2_headers = {"Authorization": "Bearer cust2-inv-uid"}
+
+    now = datetime.now(timezone.utc)
+    past_due = now - timedelta(days=7)
+
+    # Invoice past due
+    inv = Invoice(
+        invoice_number="INV-OVERDUE-001",
+        customer_id=cust1.id,
+        status=InvoiceStatus.CONFIRMED,
+        issue_date=past_due - timedelta(days=14),
+        due_date=past_due,
+        subtotal=Decimal("250.00"),
+        total_amount=Decimal("250.00"),
+        amount_paid=Decimal("0.00"),
+        amount_due=Decimal("250.00"),
+    )
+    db_session.add(inv)
+    await db_session.commit()
+
+    # 1. Update overdue invoices
+    from app.services.invoice_service import invoice_service
+    overdue_count = await invoice_service.update_overdue_invoices(db_session)
+    assert overdue_count >= 1
+
+    await db_session.refresh(inv)
+    assert inv.status == InvoiceStatus.OVERDUE
+
+    # 2. Printable HTML Invoice endpoint
+    html_resp = await async_client.get(f"/api/v1/invoices/{inv.id}/html", headers=cust1_headers)
+    assert html_resp.status_code == 200
+    assert "text/html" in html_resp.headers["content-type"]
+    html_text = html_resp.text
+    assert "INV-OVERDUE-001" in html_text
+    assert "window.print()" in html_text
+    assert "overdue" in html_text
+
+    # 3. Customer 2 gets 403 on Customer 1's HTML invoice
+    forbidden_resp = await async_client.get(f"/api/v1/invoices/{inv.id}/html", headers=cust2_headers)
+    assert forbidden_resp.status_code == 403
+

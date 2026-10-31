@@ -1,6 +1,7 @@
 from typing import Optional
 import uuid
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_roles
@@ -57,6 +58,17 @@ async def get_invoice(
 ) -> InvoiceResponse:
     invoice = await invoice_service.get_invoice(db=db, invoice_id=invoice_id, current_user=current_user)
     return InvoiceResponse.model_validate(invoice)
+
+
+@router.get("/{invoice_id}/html", response_class=HTMLResponse, summary="Get Printable HTML Invoice")
+async def get_invoice_html(
+    invoice_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> HTMLResponse:
+    html_content = await invoice_service.get_invoice_html(db=db, invoice_id=invoice_id, current_user=current_user)
+    return HTMLResponse(content=html_content)
+
 
 
 @router.post("/generate-recurring", response_model=RecurringBillingGenerateResponse, summary="Generate Recurring Invoices")

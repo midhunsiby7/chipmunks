@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_SECRET: Optional[str] = None
     RAZORPAY_WEBHOOK_SECRET: Optional[str] = None
 
+    # In-Process Automated Recurring Billing Scheduler
+    BILLING_SCHEDULER_ENABLED: bool = True
+    BILLING_SCHEDULER_INTERVAL_SECONDS: int = 300
+
     # CORS origins
     BACKEND_CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:5173",

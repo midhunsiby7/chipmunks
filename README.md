@@ -71,13 +71,16 @@ odo/
 ├── backend/                 # FastAPI backend application
 │   ├── app/
 │   │   ├── api/             # API v1 routes and dependency injection
-│   │   ├── core/            # Configuration and JWT security
+│   │   ├── core/            # Configuration, Firebase Admin Auth, and utilities
 │   │   ├── db/              # SQLAlchemy session and engine setup
 │   │   ├── models/          # 13 ORM models (Users, Subscriptions, Invoices, etc.)
 │   │   ├── schemas/         # Pydantic validation schemas
-│   │   └── services/        # Business logic services
+│   │   └── services/        # Business logic services and billing scheduler
 │   ├── alembic/             # Database migration scripts
+│   ├── docs/                # API integration reference (backend/docs/API_REFERENCE.md)
+│   ├── scripts/             # PostgreSQL verification script
 │   └── tests/               # Pytest async test suite
+
 └── frontend/                # React + Vite + Tailwind CSS frontend
     └── src/
         ├── api/             # Axios client with interceptors

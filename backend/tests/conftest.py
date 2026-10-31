@@ -178,6 +178,8 @@ async def setup_test_database(monkeypatch):
     monkeypatch.setattr(app.cli.bootstrap_admin, "AsyncSessionLocal", TestingSessionLocal)
     import app.db.session
     monkeypatch.setattr(app.db.session, "AsyncSessionLocal", TestingSessionLocal)
+    import app.services.billing_scheduler
+    monkeypatch.setattr(app.services.billing_scheduler, "AsyncSessionLocal", TestingSessionLocal)
 
     # Re-create database schema cleanly
     async with test_engine.begin() as conn:

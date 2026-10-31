@@ -277,30 +277,39 @@ class InvoiceService:
                 sub.status = SubscriptionStatus.EXPIRED
                 continue
 
-            period_start = sub.current_period_end
-            period_end = compute_next_billing_date(period_start, sub.billing_interval)
+            max_consecutive_periods = 36
+            period_count = 0
+            while sub.next_billing_date <= target_date and period_count < max_consecutive_periods:
+                period_count += 1
+                period_start = sub.current_period_end
+                period_end = compute_next_billing_date(period_start, sub.billing_interval)
 
-            inv = await self.generate_invoice_for_subscription(
-                db=db,
-                subscription=sub,
-                period_start=period_start,
-                period_end=period_end,
-                auto_commit=False,
-            )
+                inv = await self.generate_invoice_for_subscription(
+                    db=db,
+                    subscription=sub,
+                    period_start=period_start,
+                    period_end=period_end,
+                    auto_commit=False,
+                )
 
-            if inv and inv.id not in generated_ids:
-                generated_ids.append(inv.id)
-                # Advance subscription periods
-                sub.current_period_start = period_start
-                sub.current_period_end = period_end
-                sub.next_billing_date = period_end
+                if inv and inv.id not in generated_ids:
+                    generated_ids.append(inv.id)
+                    # Advance subscription periods
+                    sub.current_period_start = period_start
+                    sub.current_period_end = period_end
+                    sub.next_billing_date = period_end
 
-                # Check if cancellation was scheduled at period end
-                if sub.cancel_at_period_end:
-                    sub.status = SubscriptionStatus.CANCELLED
-                    sub.cancelled_at = datetime.now(timezone.utc)
-            else:
-                skipped += 1
+                    # Check if cancellation was scheduled at period end
+                    if sub.cancel_at_period_end:
+                        sub.status = SubscriptionStatus.CANCELLED
+                        sub.cancelled_at = datetime.now(timezone.utc)
+                        break
+                else:
+                    skipped += 1
+                    # Even if invoice already existed for this period, advance pointer to next period
+                    sub.current_period_start = period_start
+                    sub.current_period_end = period_end
+                    sub.next_billing_date = period_end
 
         await db.commit()
 
@@ -310,6 +319,351 @@ class InvoiceService:
             invoice_ids=generated_ids,
             message=f"Recurring billing completed: {len(generated_ids)} generated, {skipped} skipped.",
         )
+
+    async def update_overdue_invoices(self, db: AsyncSession) -> int:
+        """
+        Scans confirmed/issued/partially-paid invoices past their due date and
+        transitions them to OVERDUE.
+        """
+        now = datetime.now(timezone.utc)
+        query = select(Invoice).where(
+            Invoice.status.in_([InvoiceStatus.CONFIRMED, InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID]),
+            Invoice.due_date < now,
+            Invoice.amount_due > 0,
+        )
+        invoices = (await db.execute(query)).scalars().all()
+        updated = 0
+        for inv in invoices:
+            inv.status = InvoiceStatus.OVERDUE
+            updated += 1
+        if updated > 0:
+            await db.commit()
+            logger.info("Marked %d past-due invoices as OVERDUE", updated)
+        return updated
+
+    async def get_invoice_html(
+        self,
+        db: AsyncSession,
+        invoice_id: uuid.UUID,
+        current_user: User,
+    ) -> str:
+        """
+        Renders an elegant, printable HTML invoice with CSS print styling.
+        """
+        query = (
+            select(Invoice)
+            .options(
+                selectinload(Invoice.lines),
+                selectinload(Invoice.customer),
+                selectinload(Invoice.subscription),
+            )
+            .where(Invoice.id == invoice_id)
+        )
+        invoice = await db.scalar(query)
+        if not invoice:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invoice not found.")
+
+        # Customer isolation
+        if current_user.role == UserRole.CUSTOMER and invoice.customer_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
+
+        customer_name = invoice.customer.full_name if invoice.customer else "Valued Customer"
+        customer_email = invoice.customer.email if invoice.customer else ""
+        company_name = (invoice.customer.company_name or "") if invoice.customer else ""
+
+        status_colors = {
+            "paid": "#16a34a",
+            "confirmed": "#2563eb",
+            "issued": "#2563eb",
+            "partially_paid": "#ca8a04",
+            "overdue": "#dc2626",
+            "cancelled": "#6b7280",
+            "void": "#6b7280",
+            "draft": "#9ca3af",
+        }
+        badge_color = status_colors.get(invoice.status.value, "#2563eb")
+
+        period_info = ""
+        if invoice.billing_period_start and invoice.billing_period_end:
+            period_info = f"""
+            <div class="meta-row">
+                <span class="meta-label">Billing Period:</span>
+                <span class="meta-value">{invoice.billing_period_start.strftime('%b %d, %Y')} – {invoice.billing_period_end.strftime('%b %d, %Y')}</span>
+            </div>
+            """
+
+        lines_rows = ""
+        for line in invoice.lines:
+            lines_rows += f"""
+            <tr>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb;">{line.description}</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; text-align: center;">{line.quantity}</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; text-align: right;">${line.unit_price:.2f}</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600;">${line.line_total:.2f}</td>
+            </tr>
+            """
+
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice {invoice.invoice_number} – Brightloop</title>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1f2937;
+            background-color: #f9fafb;
+            margin: 0;
+            padding: 32px 16px;
+        }}
+        .invoice-card {{
+            max-width: 800px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 40px;
+        }}
+        .header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #f3f4f6;
+            padding-bottom: 24px;
+            margin-bottom: 24px;
+        }}
+        .brand {{
+            font-size: 24px;
+            font-weight: 800;
+            color: #2563eb;
+            letter-spacing: -0.5px;
+        }}
+        .brand-sub {{
+            font-size: 13px;
+            color: #6b7280;
+            margin-top: 4px;
+        }}
+        .badge {{
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #ffffff;
+            background-color: {badge_color};
+        }}
+        .parties {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }}
+        .section-title {{
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #9ca3af;
+            margin-bottom: 8px;
+        }}
+        .party-name {{
+            font-size: 16px;
+            font-weight: 700;
+            color: #111827;
+        }}
+        .party-detail {{
+            font-size: 14px;
+            color: #4b5563;
+            margin-top: 2px;
+        }}
+        .meta-row {{
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            padding: 4px 0;
+        }}
+        .meta-label {{
+            color: #6b7280;
+        }}
+        .meta-value {{
+            font-weight: 600;
+            color: #111827;
+        }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+        }}
+        th {{
+            background-color: #f9fafb;
+            padding: 12px 16px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6b7280;
+            border-bottom: 2px solid #e5e7eb;
+        }}
+        .totals-container {{
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 16px;
+        }}
+        .totals-table {{
+            width: 320px;
+        }}
+        .total-row {{
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 14px;
+            color: #4b5563;
+        }}
+        .total-row.grand {{
+            font-size: 18px;
+            font-weight: 800;
+            color: #111827;
+            border-top: 2px solid #e5e7eb;
+            padding-top: 10px;
+            margin-top: 6px;
+        }}
+        .total-row.due {{
+            font-size: 16px;
+            font-weight: 800;
+            color: #dc2626;
+            border-top: 1px solid #fee2e2;
+            padding-top: 8px;
+            margin-top: 4px;
+        }}
+        .notes-box {{
+            margin-top: 32px;
+            padding: 16px;
+            border-radius: 8px;
+            background-color: #f9fafb;
+            font-size: 13px;
+            color: #6b7280;
+        }}
+        .action-bar {{
+            max-width: 800px;
+            margin: 0 auto 16px auto;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }}
+        .btn {{
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            background-color: #2563eb;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+        }}
+        .btn:hover {{
+            background-color: #1d4ed8;
+        }}
+        @media print {{
+            body {{
+                background-color: #ffffff;
+                padding: 0;
+            }}
+            .invoice-card {{
+                box-shadow: none;
+                padding: 0;
+            }}
+            .no-print {{
+                display: none !important;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="action-bar no-print">
+        <button class="btn" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+
+    <div class="invoice-card">
+        <div class="header">
+            <div>
+                <div class="brand">Brightloop</div>
+                <div class="brand-sub">Subscription Management System</div>
+            </div>
+            <div style="text-align: right;">
+                <span class="badge">{invoice.status.value}</span>
+                <h2 style="margin: 8px 0 0 0; font-size: 20px; font-weight: 800;">{invoice.invoice_number}</h2>
+            </div>
+        </div>
+
+        <div class="parties">
+            <div>
+                <div class="section-title">Billed To</div>
+                <div class="party-name">{customer_name}</div>
+                {f'<div class="party-detail">{company_name}</div>' if company_name else ''}
+                {f'<div class="party-detail">{customer_email}</div>' if customer_email else ''}
+            </div>
+            <div>
+                <div class="section-title">Invoice Details</div>
+                <div class="meta-row">
+                    <span class="meta-label">Issue Date:</span>
+                    <span class="meta-value">{invoice.issue_date.strftime('%b %d, %Y')}</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">Due Date:</span>
+                    <span class="meta-value">{invoice.due_date.strftime('%b %d, %Y')}</span>
+                </div>
+                {period_info}
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="text-align: left;">Description</th>
+                    <th style="text-align: center; width: 80px;">Qty</th>
+                    <th style="text-align: right; width: 120px;">Unit Price</th>
+                    <th style="text-align: right; width: 120px;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {lines_rows}
+            </tbody>
+        </table>
+
+        <div class="totals-container">
+            <div class="totals-table">
+                <div class="total-row">
+                    <span>Subtotal:</span>
+                    <span>${invoice.subtotal:.2f}</span>
+                </div>
+                {f'<div class="total-row"><span>Discount:</span><span>-${invoice.discount_amount:.2f}</span></div>' if invoice.discount_amount > 0 else ''}
+                {f'<div class="total-row"><span>Tax:</span><span>+${invoice.tax_amount:.2f}</span></div>' if invoice.tax_amount > 0 else ''}
+                <div class="total-row grand">
+                    <span>Total Amount:</span>
+                    <span>${invoice.total_amount:.2f}</span>
+                </div>
+                <div class="total-row">
+                    <span>Amount Paid:</span>
+                    <span>${invoice.amount_paid:.2f}</span>
+                </div>
+                <div class="total-row due">
+                    <span>Amount Due:</span>
+                    <span>${invoice.amount_due:.2f} {invoice.currency}</span>
+                </div>
+            </div>
+        </div>
+
+        {f'<div class="notes-box"><strong>Notes:</strong> {invoice.notes}</div>' if invoice.notes else ''}
+    </div>
+</body>
+</html>"""
+        return html
+
 
     async def cancel_invoice(
         self,

@@ -237,3 +237,89 @@ async def test_razorpay_webhook_idempotency(async_client):
     )
     assert resp2.status_code == 200
     assert resp2.json()["status"] == "ignored"
+
+
+@pytest.mark.asyncio
+async def test_razorpay_webhook_handling_and_failed_event(async_client, db_session, seed_data):
+    inv1 = seed_data["inv1"]
+    cust1 = seed_data["cust1"]
+
+    # 1. Failed payment event does NOT mark invoice paid
+    fail_payload = json.dumps({
+        "id": "evt_test_failed_001",
+        "event": "payment.failed",
+        "payload": {
+            "payment": {
+                "entity": {
+                    "id": "pay_failed_123",
+                    "order_id": "order_mock_nonexistent",
+                    "amount": 20000,
+                }
+            }
+        },
+    }).encode("utf-8")
+
+    fail_resp = await async_client.post(
+        "/api/v1/payments/razorpay/webhook",
+        content=fail_payload,
+        headers={"Content-Type": "application/json"},
+    )
+    assert fail_resp.status_code == 200
+    assert fail_resp.json()["status"] == "processed"
+
+    # Verify invoice remains unpaid
+    await db_session.refresh(inv1)
+    assert inv1.status == InvoiceStatus.CONFIRMED
+    assert inv1.amount_paid == Decimal("0.00")
+
+    # 2. Webhook payment.captured reconciles order & invoice
+    order_id = "order_wh_capture_001"
+    rzp_order = RazorpayOrder(
+        order_id=order_id,
+        invoice_id=inv1.id,
+        customer_id=cust1.id,
+        amount=Decimal("200.00"),
+        currency="INR",
+        status="created",
+    )
+    db_session.add(rzp_order)
+    await db_session.commit()
+
+    captured_payload = json.dumps({
+        "id": "evt_test_captured_002",
+        "event": "payment.captured",
+        "payload": {
+            "payment": {
+                "entity": {
+                    "id": "pay_captured_999",
+                    "order_id": order_id,
+                    "amount": 20000,
+                }
+            }
+        },
+    }).encode("utf-8")
+
+    captured_resp = await async_client.post(
+        "/api/v1/payments/razorpay/webhook",
+        content=captured_payload,
+        headers={"Content-Type": "application/json"},
+    )
+    assert captured_resp.status_code == 200
+    assert captured_resp.json()["status"] == "processed"
+
+    # Verify invoice is balanced to PAID
+    await db_session.refresh(inv1)
+    assert inv1.status == InvoiceStatus.PAID
+    assert inv1.amount_paid == Decimal("200.00")
+    assert inv1.amount_due == Decimal("0.00")
+
+
+@pytest.mark.asyncio
+async def test_billing_scheduler_cycle_execution(db_session, seed_data):
+    from app.services.billing_scheduler import billing_scheduler
+
+    result = await billing_scheduler.run_scheduler_cycle()
+    assert result["status"] == "success"
+    assert "invoices_generated" in result
+    assert "overdue_updated" in result
+

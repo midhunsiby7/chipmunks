@@ -7,14 +7,20 @@ from app import __version__
 from app.api.v1.endpoints.health import check_health
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.services.billing_scheduler import billing_scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle events management for startup and shutdown."""
-    # Startup: Database connection pool verification or warming can be placed here
+    # Startup: Launch automated recurring billing background scheduler if enabled
+    if settings.APP_ENV != "testing" and settings.BILLING_SCHEDULER_ENABLED:
+        billing_scheduler.start()
     yield
-    # Shutdown: Cleanly close pools and background tasks
+    # Shutdown: Cleanly stop background scheduler and terminate tasks
+    if settings.BILLING_SCHEDULER_ENABLED:
+        await billing_scheduler.stop()
+
 
 
 app = FastAPI(
