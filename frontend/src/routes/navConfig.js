@@ -87,9 +87,8 @@ export const NAV_ITEMS = [
     path: '/quotations',
     icon: FileSpreadsheet,
     section: 'Sales',
-    roles: ['admin', 'staff'],
-    status: 'planned',
-    plannedPhase: 'Phase 4',
+    roles: ['admin', 'staff', 'customer'],
+    status: 'active',
   },
   {
     id: 'discounts',

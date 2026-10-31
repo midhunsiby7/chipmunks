@@ -13,6 +13,7 @@ import UsersPage from './pages/UsersPage';
 import ProductsPage from './pages/ProductsPage';
 import PlansPage from './pages/PlansPage';
 import TaxesPage from './pages/TaxesPage';
+import QuotationsPage from './pages/QuotationsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -21,7 +22,6 @@ import UnauthorizedPage from './pages/UnauthorizedPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 import {
-  FileSpreadsheet,
   Tag,
   CreditCard,
   BarChart3,
@@ -106,18 +106,12 @@ export default function App() {
               }
             />
 
-            {/* 7. Quotations (Admin & Staff Only) */}
+            {/* 7. Quotations (Admin, Staff, Customer) */}
             <Route
               path="quotations"
               element={
-                <RoleRoute allowedRoles={['admin', 'staff']}>
-                  <ModulePlaceholderPage
-                    title="Quotations"
-                    section="Sales"
-                    plannedPhase="Phase 4"
-                    description="Draft quotation proposals, send customer approvals, and convert accepted quotes to active subscriptions."
-                    icon={FileSpreadsheet}
-                  />
+                <RoleRoute allowedRoles={['admin', 'staff', 'customer']}>
+                  <QuotationsPage />
                 </RoleRoute>
               }
             />

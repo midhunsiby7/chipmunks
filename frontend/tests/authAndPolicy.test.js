@@ -111,9 +111,9 @@ test('Role-Based Access Navigation Filtering', async (t) => {
 
   await t.test('Customer role receives only personal billing items', () => {
     const customerItems = getNavItemsForRole('customer');
-    assert.equal(customerItems.length, 4);
+    assert.equal(customerItems.length, 5);
     const ids = customerItems.map((i) => i.id);
-    assert.deepEqual(ids, ['overview', 'subscriptions', 'invoices', 'payments']);
+    assert.deepEqual(ids, ['overview', 'subscriptions', 'invoices', 'quotations', 'payments']);
     assert.ok(!ids.includes('customers'));
     assert.ok(!ids.includes('settings'));
     assert.ok(!ids.includes('analytics'));

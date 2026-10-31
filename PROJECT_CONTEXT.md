@@ -880,3 +880,36 @@ npm run dev
   - Unit Tests: 69 tests passing across 4 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`).
   - Linter: 0 warnings, 0 errors across 87 files (`oxlint`).
   - Production Build: 2,174 modules transformed cleanly in 3.28s (`vite build`).
+
+### Phase 6: Quotation Management System (Completed)
+* **Quotation Catalogue (`QuotationsPage.jsx`)**:
+  - Full server-side paginated catalogue displaying Quotation Number (`QUO-YYYY-XXXXX`), Customer details, Issue Date, Expiry Date, Total Amount, and Status Badges.
+  - Search filter with 300ms debouncing across quotation numbers and customer names/emails.
+  - Status filter (`all`, `draft`, `sent`, `accepted`, `rejected`, `converted`).
+  - Action buttons for Viewing document details, Sending draft quotes, Accepting/Rejecting sent quotes, and Converting accepted quotes to subscriptions.
+  - Role-adaptive interface supporting Admin/Staff management and Customer self-service.
+* **Quotation Creation (`QuotationFormModal.jsx`)**:
+  - Section A (Customer & Template): Active customer dropdown from `userService` and optional quotation template pre-population from `quotationService.listTemplates`.
+  - Section B (Validity & Notes): Validity Expiry Date (`valid_until`), default Terms & Conditions, and Customer Notes.
+  - Section C (Itemized Lines): Multiple line item creator supporting catalog Product lines (with variant selection and pricing), Subscription Plan lines, and custom items. Full quantity and unit price editing with live line subtotal computation.
+  - Section D (Taxes & Financial Summary): Tax rule association via `taxService`, optional promotional discount code, and real-time financial breakdown (Subtotal, Discount deduction, Tax liability, and Grand Total).
+* **Document Presentation & PDF (`QuotationDetailsModal.jsx`)**:
+  - Professional customer-facing document view detailing client information, validity deadlines, itemized breakdown, and terms.
+  - Direct browser Print / Save as PDF integration (`window.print()`).
+  - Documented status: Server-side PDF generation endpoint is planned for a future phase; native print styling provides instant PDF capture.
+* **Lifecycle & Actions (`QuotationActionDialog.jsx`)**:
+  - Full support for backend state machine transitions: Draft → Sent (`POST /quotations/{id}/send`) → Accepted (`POST /quotations/{id}/accept`) / Rejected (`POST /quotations/{id}/reject`).
+  - One-click Conversion to Subscription (`POST /quotations/{id}/convert-to-subscription`) creating active subscriptions with idempotency checks.
+* **API Service Architecture (`quotationService.js`)**:
+  - Centralized Axios client integrating `listQuotations`, `getQuotation`, `createQuotation`, `sendQuotation`, `acceptQuotation`, `rejectQuotation`, `convertToSubscription`, `listTemplates`, and `createTemplate`.
+* **Validation & Financial Formulas (`quotationValidation.js`)**:
+  - Strict client-side validation ensuring valid customer assignment, positive line quantities, non-negative unit prices, and future expiration timestamps.
+  - Deterministic quotation financial calculation engine mirroring backend rounding rules.
+  - Status badge metadata generator.
+* **Route & Navigation Integration**:
+  - Promoted `quotations` in `navConfig.js` to active status for `admin`, `staff`, and `customer`.
+  - Mounted `<QuotationsPage />` behind `<RoleRoute allowedRoles={['admin', 'staff', 'customer']}>` in `App.jsx`.
+* **Testing & Quality Assurance**:
+  - Unit Tests: 86 tests passing across 5 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`, `quotations.test.js`).
+  - Linter: 0 warnings, 0 errors across 94 files (`oxlint`).
+  - Production Build: 2,180 modules transformed cleanly in 1.12s (`vite build`).
