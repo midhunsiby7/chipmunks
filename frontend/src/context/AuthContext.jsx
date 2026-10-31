@@ -1,77 +1,253 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AuthContext } from './authContextInstance';
 import { authService } from '../services/authService';
+import { userService } from '../services/userService';
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [firebaseUser, setFirebaseUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const cached = localStorage.getItem('brightloop_user');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
   const [token, setToken] = useState(() => localStorage.getItem('brightloop_token'));
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(null);
 
+  // Sync session with Firebase on initial mount
   useEffect(() => {
-    // Subscribe to Firebase Auth state updates
-    const unsubscribe = authService.onAuthStateChange((firebaseUser) => {
-      if (firebaseUser) {
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName || 'Brightloop User',
-          role: 'admin', // Default role until backend maps role in Phase 2
-        });
-      } else {
-        const cachedUser = localStorage.getItem('brightloop_user');
-        if (cachedUser) {
-          try {
-            setUser(JSON.parse(cachedUser));
-          } catch {
+    let isSubscribed = true;
+
+    const unsubscribe = authService.onAuthStateChange(async (fbUser) => {
+      if (!isSubscribed) return;
+
+      if (fbUser) {
+        setFirebaseUser(fbUser);
+        try {
+          const idToken = await fbUser.getIdToken();
+          localStorage.setItem('brightloop_token', idToken);
+          setToken(idToken);
+
+          // Fetch authoritative profile from FastAPI backend
+          const profile = await userService.getCurrentUserProfile();
+          if (!isSubscribed) return;
+
+          if (profile.is_active === false) {
+            await authService.signOutUser();
             setUser(null);
+            setToken(null);
+            setAuthError('Your account has been deactivated. Please contact support.');
+          } else {
+            setUser(profile);
+            localStorage.setItem('brightloop_user', JSON.stringify(profile));
+            setAuthError(null);
           }
-        } else {
+        } catch (err) {
+          console.warn('[Brightloop AuthContext] Could not fetch backend profile on auth change:', err);
+          // If backend profile is not yet initialized (e.g. registration in flight), don't wipe immediately
+          if (isSubscribed) {
+            const cached = localStorage.getItem('brightloop_user');
+            if (cached) {
+              try {
+                setUser(JSON.parse(cached));
+              } catch {
+                setUser(null);
+              }
+            }
+          }
+        }
+      } else {
+        setFirebaseUser(null);
+        // Only clear if not in an offline dev preview session
+        const cachedToken = localStorage.getItem('brightloop_token');
+        if (!cachedToken) {
           setUser(null);
+          setToken(null);
         }
       }
-      setLoading(false);
+
+      if (isSubscribed) {
+        setLoading(false);
+      }
     });
 
-    // Listen for unauthorized 401 events dispatched by centralized apiClient
+    // Handle global 401 Unauthorized event from apiClient
     const handleUnauthorized = () => {
       setUser(null);
       setToken(null);
+      setFirebaseUser(null);
+      localStorage.removeItem('brightloop_token');
+      localStorage.removeItem('brightloop_user');
+      setAuthError('Your session has expired. Please sign in again.');
     };
 
     window.addEventListener('brightloop:unauthorized', handleUnauthorized);
 
     return () => {
+      isSubscribed = false;
       unsubscribe();
       window.removeEventListener('brightloop:unauthorized', handleUnauthorized);
     };
   }, []);
 
-  const login = (authToken, userData) => {
-    localStorage.setItem('brightloop_token', authToken);
-    if (userData) {
-      localStorage.setItem('brightloop_user', JSON.stringify(userData));
-    }
-    setToken(authToken);
-    setUser(userData);
-  };
+  /**
+   * Log in user with email and password
+   */
+  const login = useCallback(async (email, password) => {
+    setLoading(true);
+    setAuthError(null);
+    try {
+      const credential = await authService.loginWithEmailPassword(email, password);
+      const idToken = await credential.user.getIdToken();
+      setToken(idToken);
+      setFirebaseUser(credential.user);
 
-  const logout = async () => {
-    await authService.signOutUser();
-    setToken(null);
-    setUser(null);
-  };
+      // Fetch authoritative user profile from FastAPI backend
+      const profile = await userService.getCurrentUserProfile();
+
+      if (profile.is_active === false) {
+        await authService.signOutUser();
+        setUser(null);
+        setToken(null);
+        setFirebaseUser(null);
+        const deactErr = new Error('Your account has been deactivated. Please contact support.');
+        setAuthError(deactErr.message);
+        throw deactErr;
+      }
+
+      setUser(profile);
+      localStorage.setItem('brightloop_token', idToken);
+      localStorage.setItem('brightloop_user', JSON.stringify(profile));
+      return profile;
+    } catch (error) {
+      setAuthError(error.message || 'Login failed');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * Register a new customer
+   * Workflow:
+   * 1. Create user in Firebase via authService.registerCustomer
+   * 2. Initialize PostgreSQL customer profile via userService.initializeCustomerProfile
+   */
+  const registerCustomer = useCallback(
+    async ({ email, password, fullName, phoneNumber, companyName }) => {
+      setLoading(true);
+      setAuthError(null);
+      try {
+        const credential = await authService.registerCustomer(email, password);
+        const idToken = await credential.user.getIdToken();
+        setToken(idToken);
+        setFirebaseUser(credential.user);
+        localStorage.setItem('brightloop_token', idToken);
+
+        // Initialize customer profile in PostgreSQL
+        const profile = await userService.initializeCustomerProfile({
+          fullName,
+          phoneNumber,
+          companyName,
+        });
+
+        setUser(profile);
+        localStorage.setItem('brightloop_user', JSON.stringify(profile));
+        return profile;
+      } catch (error) {
+        setAuthError(error.message || 'Registration failed');
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  /**
+   * Sign out current user
+   */
+  const logout = useCallback(async () => {
+    setLoading(true);
+    try {
+      await authService.signOutUser();
+    } finally {
+      setUser(null);
+      setFirebaseUser(null);
+      setToken(null);
+      setAuthError(null);
+      localStorage.removeItem('brightloop_token');
+      localStorage.removeItem('brightloop_user');
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * Re-fetch the latest user profile from backend
+   */
+  const refreshProfile = useCallback(async () => {
+    try {
+      const profile = await userService.getCurrentUserProfile();
+      if (profile.is_active === false) {
+        await logout();
+      } else {
+        setUser(profile);
+        localStorage.setItem('brightloop_user', JSON.stringify(profile));
+      }
+      return profile;
+    } catch (err) {
+      console.warn('[Brightloop AuthContext] Failed to refresh profile:', err);
+      return null;
+    }
+  }, [logout]);
+
+  /**
+   * Development / Evaluation demo role switcher
+   * Allows rapid role switching during offline hackathon demonstrations
+   */
+  const devSetRole = useCallback((newRole) => {
+    const mockUser = {
+      id: '00000000-0000-0000-0000-000000000001',
+      email: `${newRole}@brightloop.local`,
+      full_name: `${newRole.charAt(0).toUpperCase() + newRole.slice(1)} User`,
+      role: newRole,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const mockToken = `mock-token-${newRole}`;
+    localStorage.setItem('brightloop_token', mockToken);
+    localStorage.setItem('brightloop_user', JSON.stringify(mockUser));
+    setUser(mockUser);
+    setToken(mockToken);
+  }, []);
+
+  const normalizedRole = user?.role ? String(user.role).toLowerCase() : null;
+  const isAuthenticated = Boolean(user && token && user.is_active !== false);
 
   const value = {
     user,
+    firebaseUser,
     token,
-    role: user?.role || 'admin',
-    isAuthenticated: !!token || !!user,
+    role: normalizedRole,
+    isAuthenticated,
     loading,
+    authError,
     login,
+    registerCustomer,
     logout,
+    refreshProfile,
+    devSetRole,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export { AuthContext };
+export default AuthProvider;

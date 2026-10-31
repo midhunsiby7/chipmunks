@@ -609,7 +609,7 @@ azorpay_signature to the frontend callback.
 | **Frontend Recharts Integration** | Frontend | **IMPLEMENTED** | Working MRR AreaChart on DashboardPage |
 | **Frontend Axios API Client** | Frontend | **IMPLEMENTED** | Token interceptors & health service integration |
 | **User Authentication (Firebase Auth & PostgreSQL RBAC)**| Backend | **IMPLEMENTED & TESTED** | Firebase ID token verification, safe email sync, staff provisioning, atomic admin bootstrap CLI, 31 pytest tests passing |
-| **User Registration & Login UI** | Frontend | **PLANNED** | Skeleton LoginPage created; API hookup planned |
+| **User Authentication & Role-Based Access Control** | Frontend | **IMPLEMENTED & TESTED** | Firebase modular auth, Customer self-registration, Login, Forgot & Reset Password, ProtectedRoute, RoleRoute, 9-char password policy, AuthContext RBAC |
 | **Product & Variant Catalog Engine** | Domain | **PLANNED** | Models exist; service & API routers planned |
 | **Subscription Plan Management** | Domain | **PLANNED** | Models exist; daily/weekly/monthly/yearly planned |
 | **Quotation Templates & Quoting** | Domain | **PLANNED** | Models exist; acceptance workflow planned |

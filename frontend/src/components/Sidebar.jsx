@@ -4,8 +4,9 @@ import { NAV_ITEMS } from '../routes/navConfig';
 import { X } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onClose, currentRole = 'admin' }) {
+  const normalizedRole = currentRole ? String(currentRole).toLowerCase() : 'customer';
   // Filter items by current role
-  const allowedItems = NAV_ITEMS.filter((item) => item.roles.includes(currentRole));
+  const allowedItems = NAV_ITEMS.filter((item) => item.roles.includes(normalizedRole));
 
   return (
     <>
@@ -74,15 +75,19 @@ export default function Sidebar({ isOpen, onClose, currentRole = 'admin' }) {
           })}
         </nav>
 
-        {/* Footer / Dev Context Notice */}
+        {/* Footer / Dynamic Role Context Notice */}
         <div className="p-3 border-t border-slate-800/80 bg-slate-900/50">
           <div className="rounded-lg p-2.5 text-xs text-slate-400 bg-slate-800/50 border border-slate-700/40">
             <div className="flex items-center justify-between font-semibold text-slate-200">
-              <span>Phase 1 Architecture</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300">Active</span>
+              <span className="capitalize">{normalizedRole} Portal</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300">Phase 2 RBAC</span>
             </div>
             <p className="mt-1 text-[11px] text-slate-400 leading-tight">
-              Shell & Design System ready for parallel backend integration.
+              {normalizedRole === 'admin'
+                ? 'Full administrative privileges across all catalog, billing, and settings modules.'
+                : normalizedRole === 'staff'
+                ? 'Operational staff privileges for customer and subscription management.'
+                : 'Customer self-service portal for subscriptions, quotations, and invoices.'}
             </p>
           </div>
         </div>
