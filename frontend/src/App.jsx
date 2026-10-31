@@ -14,6 +14,7 @@ import ProductsPage from './pages/ProductsPage';
 import PlansPage from './pages/PlansPage';
 import TaxesPage from './pages/TaxesPage';
 import QuotationsPage from './pages/QuotationsPage';
+import DiscountsPage from './pages/DiscountsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -22,7 +23,6 @@ import UnauthorizedPage from './pages/UnauthorizedPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 import {
-  Tag,
   CreditCard,
   BarChart3,
   Settings as SettingsIcon,
@@ -121,13 +121,7 @@ export default function App() {
               path="discounts"
               element={
                 <RoleRoute allowedRoles={['admin', 'staff']}>
-                  <ModulePlaceholderPage
-                    title="Discounts & Promotions"
-                    section="Sales"
-                    plannedPhase="Phase 5"
-                    description="Define promotional codes, percentage and fixed reductions, and coupon redemption caps."
-                    icon={Tag}
-                  />
+                  <DiscountsPage />
                 </RoleRoute>
               }
             />

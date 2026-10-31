@@ -913,3 +913,40 @@ npm run dev
   - Unit Tests: 86 tests passing across 5 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`, `quotations.test.js`).
   - Linter: 0 warnings, 0 errors across 94 files (`oxlint`).
   - Production Build: 2,180 modules transformed cleanly in 1.12s (`vite build`).
+
+### Phase 7: Discount and Promotion Management (Completed)
+* **Discount Catalogue (`DiscountsPage.jsx`)**:
+  - Full server-side paginated catalogue displaying Promotional Code (with quick copy), Campaign Description, Deduction Type & Value, Eligibility Criteria (Min Spend, Min Qty), Applicability Scope (Global, Product, Plan), Validity Window, Usage / Redemptions, and Status Badges.
+  - KPI summary metrics: Total Promotions, Active Codes, Total Redemptions, and Type Split (Percentage vs Flat).
+  - Search filter with 300ms debouncing across promo codes and campaign descriptions.
+  - Filter toolbar for Discount Type (`all`, `percentage`, `fixed_amount`) and Status (`all`, `active`, `inactive`, `expired`, `exhausted`).
+  - Action buttons for Viewing full discount specifications, Editing configuration, and Soft Deactivating/Reactivating promo codes.
+* **Discount Creation & Editing (`DiscountFormModal.jsx`)**:
+  - Section 1 (Code & Type): Unique promo code (auto-uppercased), Campaign description, Discount Type selection (Percentage vs Flat Amount in INR), and Value validation (with 100% ceiling for percentage discounts).
+  - Section 2 (Eligibility Thresholds & Scope): Minimum purchase amount threshold (₹), Minimum item quantity requirement, and Scope selector (Global / Entire Order, Specific Product, or Specific Subscription Plan) with asynchronous product and plan lookups.
+  - Section 3 (Validity & Redemption Ceiling): Start Date/Time (`valid_from`), Expiration Date/Time (`valid_until`), optional Redemption Cap (`max_redemptions`), and Active Status toggle.
+* **Discount Inspection (`DiscountDetailsModal.jsx`)**:
+  - Detailed promotional breakdown showing Deduction Value, Status badge (Active, Expired, Exhausted, Scheduled, Inactive), One-click Code Copy, Usage progress bar (`X / Y used`), Minimum Requirements, Scope details, Validity Window, and Audit Timestamps.
+  - Direct triggers for Edit and Deactivate/Reactivate workflows.
+* **Soft Deactivation & Reactivation (`DiscountDeactivateDialog.jsx`)**:
+  - Confirmation dialog preventing further customer redemptions while preserving complete historical audit trails.
+* **Quotation Real-Time Discount Validation (`QuotationFormModal.jsx`)**:
+  - Interactive "Verify Code" button connected to backend validation API (`POST /api/v1/discounts/validate`).
+  - Real-time feedback displaying deduction amount or eligibility errors (e.g. minimum spend threshold, expired code, usage cap exceeded).
+  - Live preview updating quotation subtotal, applied discount deduction, and revised estimated grand total.
+* **API Service Architecture (`discountService.js`)**:
+  - Centralized Axios client integrating `listDiscounts`, `getDiscount`, `createDiscount`, `updateDiscount`, `deactivateDiscount`, `reactivateDiscount`, and `validateDiscountCode`.
+* **Validation & Business Logic (`discountValidation.js`)**:
+  - Strict client-side payload validation for unique codes, positive values, percentage ceilings, non-negative minimums, chronological date sequences, and redemption limits.
+  - Value formatters for percentage and Indian Rupee displays.
+  - Expiry and exhaustion evaluation utilities (`isDiscountExpired`, `isDiscountExhausted`).
+  - Dynamic status badge resolver (`getDiscountStatus`).
+  - Client-side deduction estimation engine (`calculateEstimatedDiscount`).
+  - Role-based authority helper (`canManageDiscounts`).
+* **Route & Navigation Integration**:
+  - Promoted `discounts` in `navConfig.js` to active status for `admin` and `staff`.
+  - Mounted `<DiscountsPage />` behind `<RoleRoute allowedRoles={['admin', 'staff']}>` in `App.jsx`.
+* **Testing & Quality Assurance**:
+  - Unit Tests: 118 tests passing across 6 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`, `quotations.test.js`, `discounts.test.js`).
+  - Linter: 0 warnings, 0 errors across 101 files (`oxlint`).
+  - Production Build: 2,186 modules transformed cleanly in 1.59s (`vite build`).
