@@ -1,5 +1,6 @@
-from typing import List, Union
-from pydantic import field_validator
+import os
+from typing import List, Optional, Union
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,6 +29,19 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://brightloop_user:brightloop_password@localhost:5432/brightloop_db"
     DATABASE_URL_SYNC: str = "postgresql://brightloop_user:brightloop_password@localhost:5432/brightloop_db"
 
+    # Firebase Authentication & Admin SDK
+    FIREBASE_PROJECT_ID: str = "brightloop-hackathon"
+    FIREBASE_CREDENTIALS_PATH: Optional[str] = None
+    FIREBASE_CREDENTIALS_JSON: Optional[str] = None
+    FIREBASE_AUTH_EMULATOR_HOST: Optional[str] = None
+
+    # Transactional Email Provider (Required in Production)
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    EMAILS_FROM_EMAIL: str = "noreply@brightloop.local"
+
     # CORS origins
     BACKEND_CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:5173",
@@ -43,6 +57,29 @@ class Settings(BaseSettings):
         elif isinstance(v, list):
             return v
         return ["*"]
+
+    @model_validator(mode="after")
+    def validate_production_environment(self) -> "Settings":
+        """Enforce strict production safeguards against missing credentials or email providers."""
+        if self.APP_ENV == "production":
+            # 1. Require Firebase credentials
+            has_credentials = (
+                (self.FIREBASE_CREDENTIALS_PATH and os.path.exists(self.FIREBASE_CREDENTIALS_PATH))
+                or bool(self.FIREBASE_CREDENTIALS_JSON)
+            )
+            if not has_credentials:
+                raise ValueError(
+                    "Production environment (APP_ENV=production) requires valid FIREBASE_CREDENTIALS_PATH "
+                    "or FIREBASE_CREDENTIALS_JSON."
+                )
+
+            # 2. Require transactional email provider
+            if not self.SMTP_HOST:
+                raise ValueError(
+                    "Production environment (APP_ENV=production) requires a configured transactional email provider (SMTP_HOST)."
+                )
+
+        return self
 
 
 settings = Settings()

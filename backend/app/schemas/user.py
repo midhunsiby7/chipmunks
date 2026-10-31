@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 import uuid
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.user import UserRole
 
@@ -13,19 +13,30 @@ class UserBase(BaseModel):
     company_name: Optional[str] = None
 
 
-class UserCreate(UserBase):
-    password: str
-    role: Optional[UserRole] = UserRole.CUSTOMER
+class CustomerProfileCreateRequest(BaseModel):
+    """Public customer profile initialization. Strictly no role, email, or password."""
+    full_name: str = Field(..., min_length=1, max_length=255)
+    phone_number: Optional[str] = Field(None, max_length=50)
+    company_name: Optional[str] = Field(None, max_length=255)
+
+
+class StaffCreateRequest(BaseModel):
+    """Admin-only staff provisioning request. Passwords are never accepted."""
+    email: EmailStr
+    full_name: str = Field(..., min_length=1, max_length=255)
+    phone_number: Optional[str] = Field(None, max_length=50)
+    company_name: Optional[str] = Field(None, max_length=255)
 
 
 class UserUpdate(BaseModel):
-    full_name: Optional[str] = None
+    full_name: Optional[str] = Field(None, min_length=1, max_length=255)
     phone_number: Optional[str] = None
     company_name: Optional[str] = None
     is_active: Optional[bool] = None
 
 
 class UserResponse(UserBase):
+    """Public user response schema. Strictly excludes internal firebase_uid."""
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -33,3 +44,19 @@ class UserResponse(UserBase):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+
+class StaffCreateResponse(BaseModel):
+    """Response returned upon staff account creation."""
+    user: UserResponse
+    email_dispatched: bool = False
+    password_setup_link: Optional[str] = None
+    email_verification_link: Optional[str] = None
+
+
+class ResendLinksResponse(BaseModel):
+    """Response returned when re-dispatching staff onboarding links."""
+    message: str
+    email_dispatched: bool = False
+    password_setup_link: Optional[str] = None
+    email_verification_link: Optional[str] = None

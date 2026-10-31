@@ -3,6 +3,10 @@
 .env.local
 .env.*.local
 *.env
+secrets/
+*service-account*.json
+*firebase-adminsdk*.json
+*.credentials.json
 
 # Python
 __pycache__/

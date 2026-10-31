@@ -62,8 +62,8 @@ Businesses handling recurring subscription models often struggle with fragmented
 | **Sync Driver / CLI**| psycopg2-binary | `2.9.10` | Synchronous driver for migrations and tooling |
 | **Schema Validation**| Pydantic / Pydantic Settings | `2.10.4` / `2.7.0` | Strict data validation and environment config |
 | **Migrations** | Alembic | `1.14.0` | Database schema version control |
-| **Authentication** | python-jose & bcrypt | `3.3.0` / `4.2.1` | Cryptographic JWT signing and bcrypt password hashing |
-| **Testing** | Pytest & pytest-asyncio | `8.3.4` / `0.25.0` | Async automated test harness |
+| **Authentication** | Firebase Admin SDK | `6.6.0` | Firebase ID token verification, user management, and link generation |
+| **Testing** | Pytest & pytest-asyncio | `8.3.4` / `0.25.0` | Async automated test harness (in-memory SQLite + aiosqlite) |
 | **Test Client** | HTTPX | `0.28.1` | Async ASGI testing client |
 
 ### Database & Infrastructure
@@ -147,17 +147,21 @@ D:\odo\
 │   ├── app/
 │   │   ├── __init__.py             # Version metadata (0.1.0)
 │   │   ├── main.py                 # FastAPI application factory, CORS, and root routes
+│   │   ├── cli/
+│   │   │   ├── __init__.py
+│   │   │   └── bootstrap_admin.py  # One-time atomic admin bootstrap CLI
 │   │   ├── core/
 │   │   │   ├── __init__.py
-│   │   │   ├── config.py           # Pydantic Settings (DB, CORS, JWT secrets)
-│   │   │   └── security.py         # Bcrypt password hashing & JWT encoding/decoding
+│   │   │   ├── config.py           # Pydantic Settings (DB, CORS, Firebase, SMTP)
+│   │   │   ├── firebase.py         # Firebase Admin SDK initialization & auth helpers
+│   │   │   └── security.py         # Token verification bridge
 │   │   ├── db/
 │   │   │   ├── __init__.py
 │   │   │   ├── base.py             # DeclarativeBase & TimestampMixin
 │   │   │   └── session.py          # Async & sync SQLAlchemy engines, get_db dependency
 │   │   ├── models/                 # SQLAlchemy 2.0 ORM Entities
 │   │   │   ├── __init__.py         # Central export of all database models
-│   │   │   ├── user.py             # User and UserRole enum
+│   │   │   ├── user.py             # User (firebase_uid) and UserRole enum
 │   │   │   ├── product.py          # Product and ProductVariant
 │   │   │   ├── plan.py             # Plan and BillingInterval enum
 │   │   │   ├── quotation.py        # QuotationTemplate, Quotation, QuotationLine
@@ -170,7 +174,7 @@ D:\odo\
 │   │   │   ├── __init__.py
 │   │   │   ├── common.py           # HealthResponse, MessageResponse, PaginatedResponse
 │   │   │   ├── token.py            # Token and TokenPayload
-│   │   │   ├── user.py             # UserCreate, UserUpdate, UserResponse
+│   │   │   ├── user.py             # CustomerProfileCreateRequest, StaffCreate, UserResponse
 │   │   │   ├── subscription.py     # SubscriptionCreate, SubscriptionUpdate, SubscriptionResponse
 │   │   │   └── invoice.py          # InvoiceCreate, InvoiceResponse, InvoiceLineResponse
 │   │   ├── api/
@@ -181,13 +185,20 @@ D:\odo\
 │   │   │       ├── router.py       # API router aggregating v1 endpoint routers
 │   │   │       └── endpoints/
 │   │   │           ├── __init__.py
-│   │   │           └── health.py   # System health diagnostic endpoint
+│   │   │           ├── health.py   # System health diagnostic endpoint
+│   │   │           └── users.py    # Profile, Staff provisioning, User listing endpoints
 │   │   └── services/               # Domain service modules
-│   │       └── __init__.py
+│   │       ├── __init__.py
+│   │       ├── email_service.py    # Transactional SMTP email delivery
+│   │       └── user_service.py     # User domain & compensation lifecycle logic
 │   └── tests/
 │       ├── __init__.py
-│       ├── conftest.py             # AsyncClient test fixtures
-│       └── test_health.py          # Verified health & root endpoint tests
+│       ├── conftest.py             # In-memory SQLite fixtures & Firebase mock spies
+│       ├── test_health.py          # Verified health & root endpoint tests
+│       ├── test_auth_firebase.py   # Firebase authentication & safe email sync tests
+│       ├── test_users.py           # Staff provisioning, compensation & listing tests
+│       ├── test_bootstrap_cli.py   # Atomic Admin bootstrap CLI tests
+│       └── test_production_config.py # Production environment validation tests
 │
 └── frontend/
     ├── .env.example                # Frontend environment template
@@ -247,8 +258,8 @@ erDiagram
 
     USERS {
         uuid id PK
+        string firebase_uid UK
         string email UK
-        string hashed_password
         string full_name
         string role
         boolean is_active
@@ -446,23 +457,27 @@ All endpoints below are prefixed with `/api/v1` and are marked with their implem
   Root API discovery endpoint linking to docs and health checks.
 
 ### 2. Authentication & Users
-* `POST /api/v1/auth/register` — **[PLANNED]**  
-  Body: `{ email, password, full_name, phone_number, company_name }`  
-  Returns: `UserResponse`
-* `POST /api/v1/auth/login` — **[PLANNED]**  
-  Body: OAuth2 form data or `{ username, password }`  
-  Returns: `{ access_token, token_type, expires_in }`
-* `POST /api/v1/auth/password-reset-request` — **[PLANNED]**  
-  Body: `{ email }`
-* `POST /api/v1/auth/password-reset-confirm` — **[PLANNED]**  
-  Body: `{ token, new_password }`
-* `GET /api/v1/users/me` — **[PLANNED]**  
-  Headers: `Authorization: Bearer <token>`  
-  Returns: `UserResponse`
-* `GET /api/v1/users` — **[PLANNED]**  
-  Role: `Admin`, `Staff`  
-  Query params: `page`, `page_size`, `role`, `search`  
-  Returns: `PaginatedResponse[UserResponse]`
+* `POST /api/v1/users/profile` — **[IMPLEMENTED & TESTED]**  
+  Headers: `Authorization: Bearer <firebase_id_token>`  
+  Body: `{ full_name, phone_number, company_name }` (optional)  
+  Initializes or retrieves the authenticated user's `CUSTOMER` profile in PostgreSQL. Fully idempotent under concurrent calls.
+* `GET /api/v1/users/me` — **[IMPLEMENTED & TESTED]**  
+  Headers: `Authorization: Bearer <firebase_id_token>`  
+  Returns the current user profile. Safely synchronizes verified Firebase email if changed (with duplicate collision protection).
+* `POST /api/v1/users/staff` — **[IMPLEMENTED & TESTED]**  
+  Role: `ADMIN` only  
+  Body: `{ email, full_name, phone_number, company_name }`  
+  Creates a Firebase account and PostgreSQL `STAFF` record. Generates password setup and email verification links. Reverts Firebase account via transactional compensation if PostgreSQL commit fails. In development mode (`APP_ENV=development` & `DEBUG=True`), links are returned in response; in production, delivered via SMTP.
+* `POST /api/v1/users/staff/{id}/resend-setup-link` — **[IMPLEMENTED & TESTED]**  
+  Role: `ADMIN` only  
+  Re-generates password setup and email verification links for pending staff accounts. Rejects with HTTP 409 Conflict if the staff account has already verified their email.
+* `GET /api/v1/users` — **[IMPLEMENTED & TESTED]**  
+  Role: `ADMIN` (can list all users or filter by role) or `STAFF` (strictly restricted to viewing `customer` users only). Customers receive HTTP 403 Forbidden.  
+  Query params: `role`, `skip`, `limit`  
+  Returns: `list[UserResponse]`
+* `CLI: app.cli.bootstrap_admin` — **[IMPLEMENTED & TESTED]**  
+  One-time administrator bootstrap script protected by PostgreSQL advisory transaction lock (`pg_advisory_xact_lock(42424242)`). Requires pre-existing verified Firebase identity and aborts if an active administrator already exists.  
+  Usage: `python -m app.cli.bootstrap_admin --firebase-uid <UID> --email <EMAIL> --full-name <NAME>`
 
 ### 3. Products & Product Variants
 * `GET /api/v1/products` — **[PLANNED]**  
@@ -531,7 +546,7 @@ All endpoints below are prefixed with `/api/v1` and are marked with their implem
 | **Frontend Layout & Navigation** | Frontend | **IMPLEMENTED** | MainLayout, Navbar, Sidebar, StatusBadge |
 | **Frontend Recharts Integration** | Frontend | **IMPLEMENTED** | Working MRR AreaChart on DashboardPage |
 | **Frontend Axios API Client** | Frontend | **IMPLEMENTED** | Token interceptors & health service integration |
-| **User Authentication (JWT & Passwords)**| Backend | **PLANNED** | Security utilities implemented; endpoints planned |
+| **User Authentication (Firebase Auth & PostgreSQL RBAC)**| Backend | **IMPLEMENTED & TESTED** | Firebase ID token verification, safe email sync, staff provisioning, atomic admin bootstrap CLI, 31 pytest tests passing |
 | **User Registration & Login UI** | Frontend | **PLANNED** | Skeleton LoginPage created; API hookup planned |
 | **Product & Variant Catalog Engine** | Domain | **PLANNED** | Models exist; service & API routers planned |
 | **Subscription Plan Management** | Domain | **PLANNED** | Models exist; daily/weekly/monthly/yearly planned |
@@ -592,9 +607,9 @@ To ensure non-conflicting parallel execution across developers on different mach
    * *Decision*: Use the official Vite plugin for Tailwind v4 with zero-config `@import "tailwindcss";`.
    * *Rationale*: Lightning-fast build times (under 1.3 seconds for production builds), clean CSS bundle sizes, and full utility styling without maintaining extensive CSS files.
 
-4. **JWT Bearer Authentication with Bcrypt**:
-   * *Decision*: Issue signed JWT access tokens with 60-minute expiry; hash passwords with `bcrypt`.
-   * *Rationale*: Stateless tokens enable straightforward scaling and decouple authentication verification from database bottlenecks.
+4. **Firebase Authentication with PostgreSQL RBAC**:
+   * *Decision*: Delegate customer registration, password management, email verification, and session tokens to Firebase Authentication. Store business profiles and authorize roles (`admin`, `staff`, `customer`) strictly inside PostgreSQL.
+   * *Rationale*: Eliminates password storage and cryptographic token signing vulnerabilities in the application layer while enforcing strict multi-tenant authorization and auditability in relational PostgreSQL.
 
 ---
 
