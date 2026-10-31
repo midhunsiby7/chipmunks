@@ -1042,3 +1042,53 @@ npm run dev
   - Unit Tests: 162 tests passing across 8 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`, `quotations.test.js`, `discounts.test.js`, `subscriptions.test.js`, `invoices.test.js`).
   - Linter: 0 warnings, 0 errors across 114 files (`oxlint`).
   - Production Build: 2,197 modules transformed cleanly in 3.59s (`vite build`).
+
+### Phase 10: Payment Management and Razorpay Integration (Completed)
+* **Payment Catalogue (`PaymentsPage.jsx`)**:
+  - Full server-side paginated catalogue displaying Payment Reference (`PAY-2026-XXXXX` with quick copy), Customer Billed-To details, Target Invoice link, Payment Date & Time, Payment Method with online/offline source badge, Transaction Amount, and Status Badges.
+  - KPI summary metrics: Total Settled Volume (INR/USD), Completed Transactions count, Pending / Processing count, and Razorpay Online vs Manual Offline split.
+  - Search filter with 300ms debouncing across payment references, transaction/gateway IDs, notes, and customer names/emails.
+  - Filter toolbar for Payment Status (`all`, `completed`, `pending`, `failed`, `refunded`), Payment Method (`all`, `razorpay`, `bank_transfer`, `credit_card`, `cash`, `manual`, `stripe`, `paypal`), Customer Account filter, and Invoice link filter.
+  - Deep-linking URL param support (`?id=...`, `?invoice_id=...`, and `?customer_id=...`) for instant inspection from Invoices or Customer directories.
+  - Action buttons for Viewing full payment transaction specifications and recording manual payments.
+* **Manual Payment Recording & Invoice Allocation (`PaymentRecordModal.jsx`)**:
+  - Customer selection filter and dynamic target invoice selector listing unpaid and partially paid invoices.
+  - Live Ledger Reconciliation Preview:
+    - Displays Invoice Total, Currently Paid, and Outstanding Balance Due.
+    - "Autofill Full Balance" shortcut button that autofills exact `amount_due`.
+    - Live transaction arrow displaying post-payment paid amount, remaining balance, and resulting status (`PAID` or `PARTIALLY_PAID`).
+    - Overpayment protection guard: entering amounts exceeding remaining `amount_due` is automatically flagged and blocked.
+  - Supported Payment Methods: Cash, Bank Transfer (NEFT/RTGS/IMPS), Credit / Debit Card (Offline), Manual Accounting Adjustment, Stripe, PayPal.
+  - Transaction Reference input (e.g. UTR / Cheque number), Currency selector, and internal accounting notes.
+* **Payment Details Inspection (`PaymentDetailsModal.jsx`)**:
+  - Header with Payment Reference, status badge (`Completed`, `Pending`, `Failed`, `Refunded`), payment source indicator (Razorpay Online vs Offline Manual), and one-click reference copy.
+  - Financial Hero: Transaction Amount, Currency, Payment Method, and recorded timestamp.
+  - Entity Cards: Customer account details and Target Invoice link with direct deep link navigation (`/invoices?id=...`).
+  - Audit & Gateway Identifiers: Gateway reference / Cheque number, Razorpay Order ID, Razorpay Payment ID, and verified HMAC-SHA256 signature hash.
+  - Internal / Transaction Notes display.
+* **Razorpay Standard Checkout Integration (`RazorpayCheckoutModal.jsx` & `razorpay.js`)**:
+  - Standard Checkout operating strictly in **TEST MODE ONLY** without custom collection of payment card credentials.
+  - Dynamic SDK Loader (`loadRazorpayCheckout`) safely loading official script from `https://checkout.razorpay.com/v1/checkout.js` with headless/SSR safety.
+  - Trusted Order Initiation: Calls `POST /api/v1/payments/razorpay/create-order` receiving trusted `order_id`, `amount` in paise, `currency`, `key_id`, `invoice_id`, and customer prefill information.
+  - Client-Side Checkout Execution: Launches Razorpay Checkout modal with prefilled customer details, brand theme, and event handlers for payment success, failure, and window dismissal.
+  - Cryptographic Signature Verification: Sends `{ razorpay_order_id, razorpay_payment_id, razorpay_signature }` to `POST /api/v1/payments/razorpay/verify`.
+  - Atomically balances the target invoice upon verification, prevents false positives, and provides clear success celebration or retry states.
+* **Invoice Reconciliation & Payment History Integration (`InvoiceDetailsModal.jsx`)**:
+  - Added dedicated "Payment History & Settlement Records" table to invoice details displaying all historical transactions against the invoice.
+  - Prominent "Pay Online (Razorpay)" action button for customer and staff when `amount_due > 0` and invoice is eligible.
+  - "Record Payment" administrative trigger for staff and admins to record offline settlements.
+  - Automatically re-evaluates overdue flags and updates ledger status upon payment completion.
+* **API Service Architecture (`paymentService.js`)**:
+  - Centralized Axios client integrating `listPayments`, `getPayment`, `recordPayment`, `createRazorpayOrder`, and `verifyRazorpayPayment`.
+* **Validation & Business Logic (`paymentValidation.js`)**:
+  - Payload validation ensuring valid invoice, positive non-zero amounts, overpayment prevention against `invoice.amount_due`, valid method enum, and 3-letter currency code.
+  - Visual status and method badge helpers (`getPaymentStatusBadge`, `getPaymentMethodBadge`).
+  - Deterministic balance reconciliation calculator (`calculateReconciledBalance`).
+  - Role-based authorization helpers (`canRecordManualPayment`, `canPayOnline`).
+* **Route & Navigation Integration**:
+  - Promoted `payments` in `navConfig.js` to active status for `admin`, `staff`, and `customer`.
+  - Replaced `ModulePlaceholderPage` at `/payments` with live `<PaymentsPage />` in `App.jsx`.
+* **Testing & Quality Assurance**:
+  - Unit Tests: 186 tests passing across 9 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`, `quotations.test.js`, `discounts.test.js`, `subscriptions.test.js`, `invoices.test.js`, `payments.test.js`).
+  - Linter: 0 warnings, 0 errors across 122 files (`oxlint`).
+  - Production Build: 2,204 modules transformed cleanly in 3.35s (`vite build`).

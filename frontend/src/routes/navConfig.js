@@ -106,8 +106,7 @@ export const NAV_ITEMS = [
     icon: CreditCard,
     section: 'Billing',
     roles: ['admin', 'staff', 'customer'],
-    status: 'planned',
-    plannedPhase: 'Phase 6',
+    status: 'active',
   },
   {
     id: 'analytics',

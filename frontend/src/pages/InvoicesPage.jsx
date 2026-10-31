@@ -663,6 +663,7 @@ export default function InvoicesPage() {
             setInvoiceToCancel(inv);
             setIsCancelOpen(true);
           }}
+          onInvoiceUpdated={fetchInvoices}
         />
       )}
 
