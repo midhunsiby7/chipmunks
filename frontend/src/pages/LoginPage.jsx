@@ -164,42 +164,44 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Hackathon Evaluation Quick-Role Switcher */}
-        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-              Hackathon Evaluation Preview
-            </span>
-            <span className="text-[10px] text-slate-400">Offline / Demo</span>
+        {/* Hackathon Evaluation Quick-Role Switcher (Isolated to Development Only) */}
+        {import.meta.env.DEV && (
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                Hackathon Evaluation Preview
+              </span>
+              <span className="text-[10px] text-slate-400">Dev Only</span>
+            </div>
+            <p className="text-[11px] text-slate-500 leading-tight">
+              Click below to inspect role-based access and permissions immediately:
+            </p>
+            <div className="grid grid-cols-3 gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => handleQuickDemoRole('admin')}
+                className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300 transition-colors"
+              >
+                Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoRole('staff')}
+                className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+              >
+                Staff
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoRole('customer')}
+                className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 transition-colors"
+              >
+                Customer
+              </button>
+            </div>
           </div>
-          <p className="text-[11px] text-slate-500 leading-tight">
-            Click below to inspect role-based access and permissions immediately:
-          </p>
-          <div className="grid grid-cols-3 gap-1.5 pt-1">
-            <button
-              type="button"
-              onClick={() => handleQuickDemoRole('admin')}
-              className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300 transition-colors"
-            >
-              Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickDemoRole('staff')}
-              className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 transition-colors"
-            >
-              Staff
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickDemoRole('customer')}
-              className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 transition-colors"
-            >
-              Customer
-            </button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

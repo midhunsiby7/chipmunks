@@ -674,8 +674,11 @@ azorpay_signature to the frontend callback.
 | **Frontend Recharts Integration** | Frontend | **IMPLEMENTED** | Working MRR AreaChart on DashboardPage |
 | **Frontend Axios API Client** | Frontend | **IMPLEMENTED** | Token interceptors & health service integration |
 | **User Authentication (Firebase Auth & PostgreSQL RBAC)**| Backend | **IMPLEMENTED & TESTED** | Firebase ID token verification, safe email sync, staff provisioning, atomic admin bootstrap CLI, 31 pytest tests passing |
-| **User Authentication & Role-Based Access Control** | Frontend | **IMPLEMENTED & TESTED** | Firebase modular auth, Customer self-registration, Login, Forgot & Reset Password, ProtectedRoute, RoleRoute, 9-char password policy, AuthContext RBAC |
-| **Product & Variant Catalog Engine** | Domain | **IMPLEMENTED & TESTED** | Dynamic variant generator, SKU validation, soft-delete, 6 tests passing |
+| **User Authentication & Role-Based Access Control** | Frontend | **IMPLEMENTED & TESTED** | Firebase modular auth, Customer self-registration, Login, Forgot & Reset Password, ProtectedRoute, RoleRoute, 9-char password policy, AuthContext RBAC |
+| **Role-Based Dashboards (Admin, Staff, Customer)** | Frontend | **IMPLEMENTED & TESTED** | Admin, Staff, and Customer views with real PostgreSQL counts, 9 reusable dashboard widgets, Recharts containers, INR currency formatting, dynamic role router |
+| **User Directory & Staff Provisioning** | Frontend | **IMPLEMENTED & TESTED** | User directory (`/users` & `/customers`), server-side pagination, role filtering, debounce search, admin-only staff provisioning modal (`POST /api/v1/users/staff`), credential setup link handling |
+| **Product & Variant Catalog Engine** | Domain | **IMPLEMENTED & TESTED** | Dynamic variant generator, SKU validation, soft-delete, 6 tests passing |
+| **Product Management & Variant Pricing UI** | Frontend | **IMPLEMENTED & TESTED** | Product catalogue (`/products`), server-side pagination, search, status/type filters, creation & editing modals, inline variant editor with live additive price preview (Base + Surcharge), cost price role restriction, soft-deactivation dialog, 46 tests passing |
 | **Subscription Plan Management** | Domain | **IMPLEMENTED & TESTED** | Calendar-based billing engine (leap years & month-end), availability guards, 5 tests passing |
 | **Quotation Templates & Quoting** | Domain | **IMPLEMENTED & TESTED** | Dynamic quoting, approval workflow, one-click subscription conversion, 3 tests passing |
 | **Subscription Lifecycle Machine** | Domain | **IMPLEMENTED & TESTED** | Complete state machine (active, paused, cancelled, closed), customer isolation, 3 tests passing |
@@ -821,3 +824,92 @@ npm run dev
 ```
 * **Frontend Application**: http://localhost:5173  
 * The navigation bar will automatically indicate `Backend v0.1.0 Connected` once the backend server is active.
+
+
+---
+
+## L. Frontend Implementation Status
+
+### Phase 4: Product Catalogue, Variants and Pricing (Completed)
+* **Catalogue View (`ProductsPage.jsx`)**: Full table with 300ms debounce search, status filtering (active/inactive), product type filtering (service, digital, physical), and pagination.
+* **Pricing & Variants (`productPricing.js`, `ProductFormModal.jsx`)**: Additive variant pricing formula (`Base Price + Variant Surcharge = Customer Price`), real-time preview banner, SKU validation, inline variant creation and removal.
+* **Role Permissions**: Admin and Staff permitted to create, edit, deactivate products. Admin role exclusively permitted to view cost prices and profit margins.
+* **Deactivation Dialog (`ProductDeactivateDialog.jsx`)**: Soft-deactivation with clear business impact warnings.
+
+### Phase 5: Subscription Plan Management & Tax Configuration (Completed)
+* **Subscription Plan Catalogue (`PlansPage.jsx`)**:
+  - Full server-side paginated catalogue with search across Plan Name, Code, and Description.
+  - Billing Interval filter (`all`, `daily`, `weekly`, `monthly`, `yearly`).
+  - Plan Status filter (`all`, `active`, `inactive / closed`).
+  - Associated product name and SKU resolution via `productService`.
+  - Responsive table with cadence badges, price formatted in plan currency, trial period days, and availability indicators.
+* **Plan Creation & Editing (`PlanFormModal.jsx`)**:
+  - Section A (Basic Information): Plan Code (unique, uppercase), Plan Name, Associated Product dropdown, Description.
+  - Section B (Pricing & Cadence): Recurring Price, Currency selection (USD, INR, EUR, GBP), Billing Interval, Interval Count (cadence multiplier), Minimum Quantity, Trial Period Days. Live billing cadence preview banner.
+  - Section C (Availability Window): Available From and Available Until pickers with live date range validation.
+  - Section D (Lifecycle Policies): Active status toggle, explanation of automatic expiry and instant closure rules.
+* **Plan Details (`PlanDetailsModal.jsx`)**:
+  - Comprehensive inspection modal displaying key metrics, associated product details, cadence, availability window, lifecycle policies, and audit timestamps.
+* **Plan Closure (`PlanCloseDialog.jsx`)**:
+  - Safe plan closure modal integrating `POST /plans/{id}/close` (sets `is_active: false` and `available_until: now()`) while guaranteeing active customer subscriptions remain unaffected.
+* **Tax Rules Management (`TaxesPage.jsx`)**:
+  - Dedicated tax configuration interface with Country Code filter and Status filter.
+  - Table displaying Tax Name, Code, Assessment (Percentage vs Fixed), Jurisdiction, Effective Dates, and Active status.
+* **Tax Configuration Forms (`TaxFormModal.jsx`)**:
+  - Jurisdictional inputs (Tax Name, unique Tax Code, 2-letter ISO Country Code, State/Region).
+  - Rate input supporting both percentage-based levies (0-100%) and flat fixed fees.
+  - Effective date range controls with validation.
+  - Interactive Tax Engine Preview Box providing client-side deterministic verification of tax liability and total payable amount.
+* **Tax Details & Deactivation (`TaxDetailsModal.jsx`, `TaxDeactivateDialog.jsx`)**:
+  - Specification viewer with live verification calculator.
+  - Safe soft-deactivation dialog preserving historical invoice audit ledgers.
+* **API Service Architecture (`planService.js`, `taxService.js`)**:
+  - `planService`: `listPlans`, `getPlan`, `createPlan`, `updatePlan`, `closePlan`, `reactivatePlan`.
+  - `taxService`: `listTaxRules`, `getTaxRule`, `createTaxRule`, `updateTaxRule`, `deactivateTaxRule`, `reactivateTaxRule`.
+* **Validation & Business Logic (`planAndTaxValidation.js`)**:
+  - `validatePlanPayload`: Validates code, name, cadence, positive price, min quantity, date sequence.
+  - `validateTaxPayload`: Validates code, name, rate [0, 100], 2-letter country code, date sequence.
+  - `formatBillingCadence`: Generates human-readable cadence descriptions (e.g., "Every 3 months", "Weekly").
+  - `calculateTaxPreview`: Deterministically mirrors backend `TaxDiscountService.calculate_tax` logic.
+  - `isPlanExpired`: Pure timestamp evaluation utility.
+* **Route & Navigation Integration**:
+  - Promoted `plans` in `navConfig.js` to active status.
+  - Added `taxes` route in `navConfig.js` under System section for `admin` and `staff`.
+  - Connected `<PlansPage />` and `<TaxesPage />` behind `<RoleRoute allowedRoles={['admin', 'staff']}>` in `App.jsx`.
+* **Testing & Quality Assurance**:
+  - Unit Tests: 69 tests passing across 4 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`).
+  - Linter: 0 warnings, 0 errors across 87 files (`oxlint`).
+  - Production Build: 2,174 modules transformed cleanly in 3.28s (`vite build`).
+
+### Phase 6: Quotation Management System (Completed)
+* **Quotation Catalogue (`QuotationsPage.jsx`)**:
+  - Full server-side paginated catalogue displaying Quotation Number (`QUO-YYYY-XXXXX`), Customer details, Issue Date, Expiry Date, Total Amount, and Status Badges.
+  - Search filter with 300ms debouncing across quotation numbers and customer names/emails.
+  - Status filter (`all`, `draft`, `sent`, `accepted`, `rejected`, `converted`).
+  - Action buttons for Viewing document details, Sending draft quotes, Accepting/Rejecting sent quotes, and Converting accepted quotes to subscriptions.
+  - Role-adaptive interface supporting Admin/Staff management and Customer self-service.
+* **Quotation Creation (`QuotationFormModal.jsx`)**:
+  - Section A (Customer & Template): Active customer dropdown from `userService` and optional quotation template pre-population from `quotationService.listTemplates`.
+  - Section B (Validity & Notes): Validity Expiry Date (`valid_until`), default Terms & Conditions, and Customer Notes.
+  - Section C (Itemized Lines): Multiple line item creator supporting catalog Product lines (with variant selection and pricing), Subscription Plan lines, and custom items. Full quantity and unit price editing with live line subtotal computation.
+  - Section D (Taxes & Financial Summary): Tax rule association via `taxService`, optional promotional discount code, and real-time financial breakdown (Subtotal, Discount deduction, Tax liability, and Grand Total).
+* **Document Presentation & PDF (`QuotationDetailsModal.jsx`)**:
+  - Professional customer-facing document view detailing client information, validity deadlines, itemized breakdown, and terms.
+  - Direct browser Print / Save as PDF integration (`window.print()`).
+  - Documented status: Server-side PDF generation endpoint is planned for a future phase; native print styling provides instant PDF capture.
+* **Lifecycle & Actions (`QuotationActionDialog.jsx`)**:
+  - Full support for backend state machine transitions: Draft → Sent (`POST /quotations/{id}/send`) → Accepted (`POST /quotations/{id}/accept`) / Rejected (`POST /quotations/{id}/reject`).
+  - One-click Conversion to Subscription (`POST /quotations/{id}/convert-to-subscription`) creating active subscriptions with idempotency checks.
+* **API Service Architecture (`quotationService.js`)**:
+  - Centralized Axios client integrating `listQuotations`, `getQuotation`, `createQuotation`, `sendQuotation`, `acceptQuotation`, `rejectQuotation`, `convertToSubscription`, `listTemplates`, and `createTemplate`.
+* **Validation & Financial Formulas (`quotationValidation.js`)**:
+  - Strict client-side validation ensuring valid customer assignment, positive line quantities, non-negative unit prices, and future expiration timestamps.
+  - Deterministic quotation financial calculation engine mirroring backend rounding rules.
+  - Status badge metadata generator.
+* **Route & Navigation Integration**:
+  - Promoted `quotations` in `navConfig.js` to active status for `admin`, `staff`, and `customer`.
+  - Mounted `<QuotationsPage />` behind `<RoleRoute allowedRoles={['admin', 'staff', 'customer']}>` in `App.jsx`.
+* **Testing & Quality Assurance**:
+  - Unit Tests: 86 tests passing across 5 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`, `quotations.test.js`).
+  - Linter: 0 warnings, 0 errors across 94 files (`oxlint`).
+  - Production Build: 2,180 modules transformed cleanly in 1.12s (`vite build`).

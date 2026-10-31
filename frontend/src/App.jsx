@@ -9,6 +9,11 @@ import DashboardPage from './pages/DashboardPage';
 import SubscriptionsPage from './pages/SubscriptionsPage';
 import InvoicesPage from './pages/InvoicesPage';
 import ModulePlaceholderPage from './pages/ModulePlaceholderPage';
+import UsersPage from './pages/UsersPage';
+import ProductsPage from './pages/ProductsPage';
+import PlansPage from './pages/PlansPage';
+import TaxesPage from './pages/TaxesPage';
+import QuotationsPage from './pages/QuotationsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -17,10 +22,6 @@ import UnauthorizedPage from './pages/UnauthorizedPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 import {
-  Users,
-  Package,
-  Layers,
-  FileSpreadsheet,
   Tag,
   CreditCard,
   BarChart3,
@@ -57,34 +58,30 @@ export default function App() {
             {/* 3. Invoices (Accessible to Admin, Staff, Customer) */}
             <Route path="invoices" element={<InvoicesPage />} />
 
-            {/* 4. Customers (Admin & Staff Only) */}
+            {/* 4. Users & Customers Directory (Admin & Staff Only) */}
             <Route
               path="customers"
               element={
                 <RoleRoute allowedRoles={['admin', 'staff']}>
-                  <ModulePlaceholderPage
-                    title="Customers"
-                    section="Operations"
-                    plannedPhase="Phase 3"
-                    description="Manage customer accounts, billing contacts, and subscription assignments."
-                    icon={Users}
-                  />
+                  <UsersPage />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="users"
+              element={
+                <RoleRoute allowedRoles={['admin', 'staff']}>
+                  <UsersPage />
                 </RoleRoute>
               }
             />
 
-            {/* 5. Products (Admin & Staff Only) */}
+            {/* 5. Products Catalog (Admin & Staff Only) */}
             <Route
               path="products"
               element={
                 <RoleRoute allowedRoles={['admin', 'staff']}>
-                  <ModulePlaceholderPage
-                    title="Products"
-                    section="Catalog"
-                    plannedPhase="Phase 3"
-                    description="Catalog of SaaS products, SKUs, and variant add-ons."
-                    icon={Package}
-                  />
+                  <ProductsPage />
                 </RoleRoute>
               }
             />
@@ -94,29 +91,27 @@ export default function App() {
               path="plans"
               element={
                 <RoleRoute allowedRoles={['admin', 'staff']}>
-                  <ModulePlaceholderPage
-                    title="Subscription Plans"
-                    section="Catalog"
-                    plannedPhase="Phase 3"
-                    description="Configure multi-interval cadences (daily, weekly, monthly, yearly), trial periods, and currency pricing."
-                    icon={Layers}
-                  />
+                  <PlansPage />
                 </RoleRoute>
               }
             />
 
-            {/* 7. Quotations (Admin & Staff Only) */}
+            {/* 7. Tax Rules Configuration (Admin & Staff Only) */}
+            <Route
+              path="taxes"
+              element={
+                <RoleRoute allowedRoles={['admin', 'staff']}>
+                  <TaxesPage />
+                </RoleRoute>
+              }
+            />
+
+            {/* 7. Quotations (Admin, Staff, Customer) */}
             <Route
               path="quotations"
               element={
-                <RoleRoute allowedRoles={['admin', 'staff']}>
-                  <ModulePlaceholderPage
-                    title="Quotations"
-                    section="Sales"
-                    plannedPhase="Phase 4"
-                    description="Draft quotation proposals, send customer approvals, and convert accepted quotes to active subscriptions."
-                    icon={FileSpreadsheet}
-                  />
+                <RoleRoute allowedRoles={['admin', 'staff', 'customer']}>
+                  <QuotationsPage />
                 </RoleRoute>
               }
             />
