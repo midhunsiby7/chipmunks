@@ -1,6 +1,10 @@
 import React from 'react';
-import StatusBadge from '../components/StatusBadge';
+import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/Table';
 import { formatDate, formatCurrency } from '../utils/formatters';
+import { Plus, Info } from 'lucide-react';
 
 const SAMPLE_SUBSCRIPTIONS = [
   {
@@ -41,68 +45,77 @@ const SAMPLE_SUBSCRIPTIONS = [
   },
 ];
 
+function getStatusBadge(status) {
+  switch (status) {
+    case 'active':
+      return <Badge variant="success" size="sm" dot>Active</Badge>;
+    case 'trialing':
+      return <Badge variant="info" size="sm" dot>Trialing</Badge>;
+    case 'paused':
+      return <Badge variant="warning" size="sm" dot>Paused</Badge>;
+    case 'cancelled':
+    case 'expired':
+      return <Badge variant="danger" size="sm" dot>Cancelled</Badge>;
+    default:
+      return <Badge variant="default" size="sm">{status}</Badge>;
+  }
+}
+
 export default function SubscriptionsPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between">
+      <PageHeader
+        title="Subscriptions"
+        description="Manage lifecycle, renewals, billing intervals, and customer contracts."
+        breadcrumbs={[
+          { label: 'Brightloop', href: '/' },
+          { label: 'Billing' },
+          { label: 'Subscriptions' },
+        ]}
+        actions={
+          <Button variant="primary" size="sm" leftIcon={Plus}>
+            New Subscription (Planned)
+          </Button>
+        }
+      />
+
+      {/* Development Preview Transparency Notice */}
+      <div className="flex items-start gap-3 p-3.5 rounded-lg bg-indigo-50/70 border border-indigo-100 text-xs text-indigo-900">
+        <Info className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Subscriptions</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Manage lifecycle, renewals, billing intervals, and customer contracts.
-          </p>
+          <span className="font-semibold">Development Preview Mode:</span>
+          <span className="ml-1 text-indigo-700">
+            The table below demonstrates responsive UI styling with mock contracts. Live backend integration is scheduled for Phase 4.
+          </span>
         </div>
-        <button
-          type="button"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-        >
-          + New Subscription (Planned)
-        </button>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                ID
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Customer
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Plan
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Billing Cycle
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Amount
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Renewal Date
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-slate-200 text-sm">
-            {SAMPLE_SUBSCRIPTIONS.map((sub) => (
-              <tr key={sub.id} className="hover:bg-slate-50">
-                <td className="px-6 py-4 font-mono text-xs text-slate-500">{sub.id}</td>
-                <td className="px-6 py-4 font-medium text-slate-900">{sub.customer}</td>
-                <td className="px-6 py-4 text-slate-600">{sub.plan}</td>
-                <td className="px-6 py-4 text-slate-600 capitalize">{sub.cycle}</td>
-                <td className="px-6 py-4 font-semibold text-slate-900">{formatCurrency(sub.amount)}</td>
-                <td className="px-6 py-4">
-                  <StatusBadge status={sub.status} />
-                </td>
-                <td className="px-6 py-4 text-slate-500">{formatDate(sub.periodEnd)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow isHoverable={false}>
+            <TableHead>ID</TableHead>
+            <TableHead>Customer</TableHead>
+            <TableHead>Plan</TableHead>
+            <TableHead>Billing Cycle</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Renewal Date</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {SAMPLE_SUBSCRIPTIONS.map((sub) => (
+            <TableRow key={sub.id}>
+              <TableCell className="font-mono text-xs text-slate-500">{sub.id}</TableCell>
+              <TableCell className="font-medium text-slate-900">{sub.customer}</TableCell>
+              <TableCell className="text-slate-600">{sub.plan}</TableCell>
+              <TableCell className="text-slate-600 capitalize">{sub.cycle}</TableCell>
+              <TableCell className="font-semibold text-slate-900">{formatCurrency(sub.amount)}</TableCell>
+              <TableCell>{getStatusBadge(sub.status)}</TableCell>
+              <TableCell className="text-slate-500">{formatDate(sub.periodEnd)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

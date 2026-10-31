@@ -8,8 +8,11 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { DollarSign, Users, RefreshCw, AlertCircle } from 'lucide-react';
+import { DollarSign, Users, RefreshCw, AlertCircle, Info } from 'lucide-react';
 import MetricCard from '../components/MetricCard';
+import PageHeader from '../components/ui/PageHeader';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
 
 const SAMPLE_REVENUE_DATA = [
   { month: 'May', mrr: 12400 },
@@ -23,13 +26,28 @@ const SAMPLE_REVENUE_DATA = [
 export default function DashboardPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-          Subscription Management Overview
-        </h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Real-time metrics for recurring revenue, active subscriptions, and invoice reconciliation.
-        </p>
+      <PageHeader
+        title="Subscription Management Overview"
+        description="Real-time metrics for recurring revenue, active subscriptions, and invoice reconciliation."
+        breadcrumbs={[{ label: 'Brightloop', href: '/' }, { label: 'Overview' }]}
+        badge={
+          <Badge variant="primary" size="sm" dot>
+            Phase 1 Foundation
+          </Badge>
+        }
+      />
+
+      {/* Development Transparency Banner */}
+      <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 shadow-2xs">
+        <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p className="font-semibold text-amber-900">
+            Phase 1 Frontend Architecture & Component Foundation Active
+          </p>
+          <p className="text-amber-800 leading-relaxed">
+            The shell, reusable UI component suite, Firebase SDK configuration, and centralized API client are fully established. Metrics cards and chart trends below demonstrate layout rendering and will be connected to Developer 1's live analytics aggregates in Phase 7.
+          </p>
+        </div>
       </div>
 
       {/* Metrics Row */}
@@ -65,63 +83,46 @@ export default function DashboardPage() {
       </div>
 
       {/* Analytics Chart */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">MRR Growth Trajectory</h3>
-            <p className="text-xs text-slate-500">6-month recurring revenue trend</p>
+            <CardTitle>MRR Growth Trajectory</CardTitle>
+            <CardDescription>6-month recurring revenue trend demonstration</CardDescription>
           </div>
-          <span className="text-xs font-semibold px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-md">
+          <Badge variant="default" size="sm">
             USD Currency
-          </span>
-        </div>
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={SAMPLE_REVENUE_DATA} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorMrr" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
-              <YAxis stroke="#94a3b8" fontSize={12} tickFormatter={(val) => `$${val / 1000}k`} />
-              <Tooltip
-                formatter={(value) => [`$${Number(value).toLocaleString()}`, 'MRR']}
-                contentStyle={{ backgroundColor: '#1e293b', color: '#fff', borderRadius: '8px' }}
-              />
-              <Area
-                type="monotone"
-                dataKey="mrr"
-                stroke="#4f46e5"
-                strokeWidth={2}
-                fillOpacity={1}
-                fill="url(#colorMrr)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Notice Banner */}
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <AlertCircle className="h-5 w-5 text-amber-600" aria-hidden="true" />
+          </Badge>
+        </CardHeader>
+        <CardContent>
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={SAMPLE_REVENUE_DATA} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorMrr" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickFormatter={(val) => `$${val / 1000}k`} />
+                <Tooltip
+                  formatter={(value) => [`$${Number(value).toLocaleString()}`, 'MRR']}
+                  contentStyle={{ backgroundColor: '#1e293b', color: '#fff', borderRadius: '8px' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="mrr"
+                  stroke="#4f46e5"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorMrr)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-amber-800">
-              Phase 1 Project Initialization Active
-            </h3>
-            <div className="mt-2 text-sm text-amber-700">
-              <p>
-                Core application routes, backend models, schemas, and PostgreSQL migration scaffolds have been initialized. Real database records will populate these cards once Developer 2 and Developer 1 implement the authentication and CRUD endpoints according to <code>PROJECT_CONTEXT.md</code>.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
