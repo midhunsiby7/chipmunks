@@ -10,8 +10,10 @@ from app.db.base import Base, TimestampMixin
 
 
 class PaymentMethod(str, enum.Enum):
-    CREDIT_CARD = "credit_card"
+    CASH = "cash"
     BANK_TRANSFER = "bank_transfer"
+    RAZORPAY = "razorpay"
+    CREDIT_CARD = "credit_card"
     MANUAL = "manual"
     STRIPE = "stripe"
     PAYPAL = "paypal"
@@ -27,7 +29,6 @@ class PaymentStatus(str, enum.Enum):
 class Payment(Base, TimestampMixin):
     """
     Payment transaction recording entity for invoice reconciliation.
-    STATUS: PLANNED - Foundation entity schema.
     """
     __tablename__ = "payments"
 
@@ -44,6 +45,12 @@ class Payment(Base, TimestampMixin):
         nullable=False,
         index=True
     )
+    customer_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True
+    )
     amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="USD", nullable=False)
     payment_method: Mapped[PaymentMethod] = mapped_column(
@@ -57,8 +64,12 @@ class Payment(Base, TimestampMixin):
         index=True
     )
     paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    gateway_transaction_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    gateway_transaction_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    razorpay_order_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
+    razorpay_payment_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    razorpay_signature: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Relationships
     invoice: Mapped["Invoice"] = relationship("Invoice", back_populates="payments")
+    customer = relationship("User", foreign_keys=[customer_id])

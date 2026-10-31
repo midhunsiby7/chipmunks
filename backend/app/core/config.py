@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[str] = None
     EMAILS_FROM_EMAIL: str = "noreply@brightloop.local"
 
+    # Razorpay Test Mode Configuration
+    RAZORPAY_KEY_ID: Optional[str] = None
+    RAZORPAY_KEY_SECRET: Optional[str] = None
+    RAZORPAY_WEBHOOK_SECRET: Optional[str] = None
+
     # CORS origins
     BACKEND_CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:5173",

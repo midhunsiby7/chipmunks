@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 from sqlalchemy import Boolean, Numeric, String, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -9,8 +9,7 @@ from app.db.base import Base, TimestampMixin
 
 class Product(Base, TimestampMixin):
     """
-    Catalog product entity.
-    STATUS: PLANNED - Foundation entity schema.
+    Catalog product entity supporting services, physical, and digital products.
     """
     __tablename__ = "products"
 
@@ -22,17 +21,22 @@ class Product(Base, TimestampMixin):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     sku: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    product_type: Mapped[str] = mapped_column(String(50), default="service", nullable=False)
+    sales_price: Mapped[float] = mapped_column(Numeric(12, 2), default=0.00, nullable=False)
+    cost_price: Mapped[float] = mapped_column(Numeric(12, 2), default=0.00, nullable=False)
+    internal_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relationships
-    variants: Mapped[List["ProductVariant"]] = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan")
+    variants: Mapped[List["ProductVariant"]] = relationship(
+        "ProductVariant", back_populates="product", cascade="all, delete-orphan"
+    )
 
 
 class ProductVariant(Base, TimestampMixin):
     """
     Specific variant of a product (e.g. tier, seat type, add-on).
-    STATUS: PLANNED - Foundation entity schema.
     """
     __tablename__ = "product_variants"
 
@@ -51,6 +55,7 @@ class ProductVariant(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     variant_code: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
     price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    price_difference: Mapped[float] = mapped_column(Numeric(12, 2), default=0.00, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relationships

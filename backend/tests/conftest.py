@@ -17,6 +17,7 @@ settings.APP_ENV = "testing"
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+from app import models as _models  # Register all models on Base.metadata
 from app.models.user import User, UserRole
 
 

@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from app.core.config import settings
 from app.models.user import User, UserRole
+from app.services.email_service import email_service
 from tests.conftest import mock_firebase_store
 
 
@@ -62,8 +63,8 @@ async def test_admin_creates_staff_production_mode_hides_links(async_client, see
     monkeypatch.setattr(settings, "APP_ENV", "production")
     monkeypatch.setattr(settings, "DEBUG", False)
     # Mock email provider configured
-    monkeypatch.setattr("app.services.email_service.email_service.is_configured", lambda: True)
-    monkeypatch.setattr("app.services.email_service.email_service.send_staff_onboarding_email", lambda **kw: True)
+    monkeypatch.setattr(email_service, "is_configured", lambda: True)
+    monkeypatch.setattr(email_service, "send_staff_onboarding_email", lambda **kw: True)
 
     headers = {"Authorization": "Bearer test-admin-uid"}
     payload = {
