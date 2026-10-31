@@ -7,6 +7,7 @@ from app.models.payment import Payment, PaymentMethod, PaymentStatus
 from app.models.plan import BillingInterval, Plan
 from app.models.product import Product, ProductVariant
 from app.models.quotation import Quotation, QuotationLine, QuotationStatus, QuotationTemplate
+from app.models.razorpay import RazorpayOrder, WebhookEvent
 from app.models.subscription import Subscription, SubscriptionLine, SubscriptionStatus
 from app.models.tax import TaxRule
 from app.models.user import User, UserRole
@@ -36,4 +37,6 @@ __all__ = [
     "Payment",
     "PaymentMethod",
     "PaymentStatus",
+    "RazorpayOrder",
+    "WebhookEvent",
 ]

@@ -9,7 +9,8 @@ from alembic import context
 
 # Import Brightloop models and application settings
 from app.core.config import settings
-from app.models.user import User
+from app.db.base import Base
+import app.models  # Ensure all models are registered on Base.metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -22,10 +23,7 @@ config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Phase 1 Scoped Metadata: contains strictly the User model and user_role_enum
-phase1_metadata = MetaData()
-User.__table__.to_metadata(phase1_metadata)
-target_metadata = phase1_metadata
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:

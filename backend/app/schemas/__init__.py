@@ -1,15 +1,64 @@
 """Schemas package exporting Pydantic request and response schemas."""
 
+from app.schemas.analytics import (
+    AnalyticsDashboardResponse,
+    RecentPaymentItem,
+    RecentSubscriptionItem,
+    RevenueTrendPoint,
+)
 from app.schemas.common import HealthResponse, MessageResponse, PaginatedResponse
-from app.schemas.invoice import InvoiceCreate, InvoiceLineBase, InvoiceLineResponse, InvoiceResponse
+from app.schemas.discount import (
+    DiscountCreate,
+    DiscountResponse,
+    DiscountUpdate,
+    DiscountValidateRequest,
+    DiscountValidateResponse,
+)
+from app.schemas.invoice import (
+    InvoiceCreate,
+    InvoiceLineCreate,
+    InvoiceLineResponse,
+    InvoiceResponse,
+    RecurringBillingGenerateRequest,
+    RecurringBillingGenerateResponse,
+)
+from app.schemas.payment import (
+    PaymentCreate,
+    PaymentResponse,
+    RazorpayOrderCreateRequest,
+    RazorpayOrderResponse,
+    RazorpayPaymentVerifyRequest,
+    RazorpayWebhookPayload,
+)
+from app.schemas.plan import PlanCreate, PlanResponse, PlanUpdate
+from app.schemas.product import (
+    ProductCreate,
+    ProductResponse,
+    ProductUpdate,
+    ProductVariantCreate,
+    ProductVariantResponse,
+    ProductVariantUpdate,
+)
+from app.schemas.quotation import (
+    QuotationCreate,
+    QuotationLineCreate,
+    QuotationLineResponse,
+    QuotationResponse,
+    QuotationTemplateCreate,
+    QuotationTemplateResponse,
+    QuotationTemplateUpdate,
+    QuotationUpdate,
+)
 from app.schemas.subscription import (
-    SubscriptionBase,
     SubscriptionCreate,
-    SubscriptionLineBase,
+    SubscriptionFromQuotationRequest,
+    SubscriptionLineCreate,
     SubscriptionLineResponse,
+    SubscriptionPauseRequest,
     SubscriptionResponse,
     SubscriptionUpdate,
 )
+from app.schemas.tax import TaxRuleCreate, TaxRuleResponse, TaxRuleUpdate
 from app.schemas.token import Token, TokenPayload
 from app.schemas.user import (
     CustomerProfileCreateRequest,
@@ -34,14 +83,52 @@ __all__ = [
     "ResendLinksResponse",
     "UserUpdate",
     "UserResponse",
-    "SubscriptionBase",
+    "ProductCreate",
+    "ProductUpdate",
+    "ProductResponse",
+    "ProductVariantCreate",
+    "ProductVariantUpdate",
+    "ProductVariantResponse",
+    "PlanCreate",
+    "PlanUpdate",
+    "PlanResponse",
+    "TaxRuleCreate",
+    "TaxRuleUpdate",
+    "TaxRuleResponse",
+    "DiscountCreate",
+    "DiscountUpdate",
+    "DiscountResponse",
+    "DiscountValidateRequest",
+    "DiscountValidateResponse",
+    "QuotationTemplateCreate",
+    "QuotationTemplateUpdate",
+    "QuotationTemplateResponse",
+    "QuotationCreate",
+    "QuotationUpdate",
+    "QuotationResponse",
+    "QuotationLineCreate",
+    "QuotationLineResponse",
     "SubscriptionCreate",
     "SubscriptionUpdate",
     "SubscriptionResponse",
-    "SubscriptionLineBase",
+    "SubscriptionPauseRequest",
+    "SubscriptionFromQuotationRequest",
+    "SubscriptionLineCreate",
     "SubscriptionLineResponse",
     "InvoiceCreate",
     "InvoiceResponse",
-    "InvoiceLineBase",
+    "InvoiceLineCreate",
     "InvoiceLineResponse",
+    "RecurringBillingGenerateRequest",
+    "RecurringBillingGenerateResponse",
+    "PaymentCreate",
+    "PaymentResponse",
+    "RazorpayOrderCreateRequest",
+    "RazorpayOrderResponse",
+    "RazorpayPaymentVerifyRequest",
+    "RazorpayWebhookPayload",
+    "AnalyticsDashboardResponse",
+    "RecentPaymentItem",
+    "RecentSubscriptionItem",
+    "RevenueTrendPoint",
 ]

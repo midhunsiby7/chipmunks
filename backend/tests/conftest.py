@@ -17,6 +17,7 @@ settings.APP_ENV = "testing"
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+from app import models as _models  # Register all models on Base.metadata
 from app.models.user import User, UserRole
 
 
@@ -177,6 +178,8 @@ async def setup_test_database(monkeypatch):
     monkeypatch.setattr(app.cli.bootstrap_admin, "AsyncSessionLocal", TestingSessionLocal)
     import app.db.session
     monkeypatch.setattr(app.db.session, "AsyncSessionLocal", TestingSessionLocal)
+    import app.services.billing_scheduler
+    monkeypatch.setattr(app.services.billing_scheduler, "AsyncSessionLocal", TestingSessionLocal)
 
     # Re-create database schema cleanly
     async with test_engine.begin() as conn:
