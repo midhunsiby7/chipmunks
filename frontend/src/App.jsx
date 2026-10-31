@@ -10,6 +10,7 @@ import SubscriptionsPage from './pages/SubscriptionsPage';
 import InvoicesPage from './pages/InvoicesPage';
 import ModulePlaceholderPage from './pages/ModulePlaceholderPage';
 import UsersPage from './pages/UsersPage';
+import ProductsPage from './pages/ProductsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -18,7 +19,6 @@ import UnauthorizedPage from './pages/UnauthorizedPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 import {
-  Package,
   Layers,
   FileSpreadsheet,
   Tag,
@@ -75,18 +75,12 @@ export default function App() {
               }
             />
 
-            {/* 5. Products (Admin & Staff Only) */}
+            {/* 5. Products Catalog (Admin & Staff Only) */}
             <Route
               path="products"
               element={
                 <RoleRoute allowedRoles={['admin', 'staff']}>
-                  <ModulePlaceholderPage
-                    title="Products"
-                    section="Catalog"
-                    plannedPhase="Phase 3"
-                    description="Catalog of SaaS products, SKUs, and variant add-ons."
-                    icon={Package}
-                  />
+                  <ProductsPage />
                 </RoleRoute>
               }
             />

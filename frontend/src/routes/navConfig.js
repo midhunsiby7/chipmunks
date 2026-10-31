@@ -60,8 +60,7 @@ export const NAV_ITEMS = [
     icon: Package,
     section: 'Catalog',
     roles: ['admin', 'staff'],
-    status: 'planned',
-    plannedPhase: 'Phase 3',
+    status: 'active',
   },
   {
     id: 'plans',
