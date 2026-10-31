@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage';
 import SubscriptionsPage from './pages/SubscriptionsPage';
 import InvoicesPage from './pages/InvoicesPage';
 import ModulePlaceholderPage from './pages/ModulePlaceholderPage';
+import UsersPage from './pages/UsersPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -17,7 +18,6 @@ import UnauthorizedPage from './pages/UnauthorizedPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 import {
-  Users,
   Package,
   Layers,
   FileSpreadsheet,
@@ -57,18 +57,20 @@ export default function App() {
             {/* 3. Invoices (Accessible to Admin, Staff, Customer) */}
             <Route path="invoices" element={<InvoicesPage />} />
 
-            {/* 4. Customers (Admin & Staff Only) */}
+            {/* 4. Users & Customers Directory (Admin & Staff Only) */}
             <Route
               path="customers"
               element={
                 <RoleRoute allowedRoles={['admin', 'staff']}>
-                  <ModulePlaceholderPage
-                    title="Customers"
-                    section="Operations"
-                    plannedPhase="Phase 3"
-                    description="Manage customer accounts, billing contacts, and subscription assignments."
-                    icon={Users}
-                  />
+                  <UsersPage />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="users"
+              element={
+                <RoleRoute allowedRoles={['admin', 'staff']}>
+                  <UsersPage />
                 </RoleRoute>
               }
             />

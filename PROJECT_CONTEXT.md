@@ -610,6 +610,8 @@ azorpay_signature to the frontend callback.
 | **Frontend Axios API Client** | Frontend | **IMPLEMENTED** | Token interceptors & health service integration |
 | **User Authentication (Firebase Auth & PostgreSQL RBAC)**| Backend | **IMPLEMENTED & TESTED** | Firebase ID token verification, safe email sync, staff provisioning, atomic admin bootstrap CLI, 31 pytest tests passing |
 | **User Authentication & Role-Based Access Control** | Frontend | **IMPLEMENTED & TESTED** | Firebase modular auth, Customer self-registration, Login, Forgot & Reset Password, ProtectedRoute, RoleRoute, 9-char password policy, AuthContext RBAC |
+| **Role-Based Dashboards (Admin, Staff, Customer)** | Frontend | **IMPLEMENTED & TESTED** | Admin, Staff, and Customer views with real PostgreSQL counts, 9 reusable dashboard widgets, Recharts containers, INR currency formatting, dynamic role router |
+| **User Directory & Staff Provisioning** | Frontend | **IMPLEMENTED & TESTED** | User directory (`/users` & `/customers`), server-side pagination, role filtering, debounce search, admin-only staff provisioning modal (`POST /api/v1/users/staff`), credential setup link handling |
 | **Product & Variant Catalog Engine** | Domain | **PLANNED** | Models exist; service & API routers planned |
 | **Subscription Plan Management** | Domain | **PLANNED** | Models exist; daily/weekly/monthly/yearly planned |
 | **Quotation Templates & Quoting** | Domain | **PLANNED** | Models exist; acceptance workflow planned |

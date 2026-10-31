@@ -46,13 +46,12 @@ export const NAV_ITEMS = [
   },
   {
     id: 'customers',
-    name: 'Customers',
+    name: 'Users & Customers',
     path: '/customers',
     icon: Users,
     section: 'Operations',
     roles: ['admin', 'staff'],
-    status: 'planned',
-    plannedPhase: 'Phase 3',
+    status: 'active',
   },
   {
     id: 'products',
