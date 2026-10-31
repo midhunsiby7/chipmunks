@@ -1,0 +1,118 @@
+Backend QA Findings Report
+
+1. Purpose
+
+This report records findings from reviewing the Brightloop Subscription Management System repository and its project documentation.
+
+It supports backend quality assurance by identifying documented implementation gaps, areas requiring verification, and potential API contract issues.
+
+Review type: Repository and documentation review
+Execution status: Findings below have not all been independently reproduced by running the application.
+
+2. Project Overview
+
+Brightloop is a subscription management system built using:
+
+- Backend: Python and FastAPI
+- Database: PostgreSQL with SQLAlchemy
+- Validation: Pydantic
+- Authentication: Firebase authentication and backend role-based access control
+- Testing: Pytest, pytest-asyncio and HTTPX
+- Frontend: React, Vite and Tailwind CSS
+
+The project follows a modular monolithic architecture.
+
+3. API Router Review
+
+The API v1 router registers the following modules:
+
+- Health
+- Users
+- Products
+- Plans
+- Taxes
+- Discounts
+- Quotations
+- Subscriptions
+- Invoices
+- Payments
+- Analytics
+
+The presence of a router registration does not independently prove that every endpoint works correctly. Endpoint behaviour should be checked against its implementation and automated tests.
+
+4. Findings and Follow-up Checks
+
+QA-001: Customer profile update endpoint
+
+Finding: Project documentation identifies the absence of "PUT /api/v1/users/me" and "PATCH /api/v1/users/me".
+
+Impact: Customers may be unable to update their profile through the backend API.
+
+Recommended action: Confirm whether profile editing is required. If it is, coordinate the API contract with the backend developer.
+
+Status: Documented gap; verify against the current implementation.
+
+QA-002: Invoice email delivery
+
+Finding: Project documentation states that "POST /api/v1/invoices/{id}/send" is not exposed in the backend router.
+
+Impact: Sending invoices through a dedicated API endpoint may not be supported.
+
+Recommended action: Confirm whether invoice email delivery is a requirement for the current release.
+
+Status: Documented gap; verify against the current implementation.
+
+QA-003: Subscription update and renewal
+
+Finding: Project documentation states that "PUT /api/v1/subscriptions/{id}" is not exposed and that a dedicated on-demand renewal endpoint is not provided.
+
+Impact: Direct subscription editing and manual renewal requests may not be available through dedicated endpoints.
+
+Recommended action: Confirm the intended lifecycle workflow and whether the existing subscription actions and recurring billing process meet the requirements.
+
+Status: Documented API limitations; verify against the current implementation.
+
+QA-004: Customer self-service portal
+
+Finding: The project implementation status matrix identifies the customer self-service portal as planned.
+
+Impact: Customer-facing functions such as viewing subscriptions, invoices and payment history may be incomplete.
+
+Recommended action: Verify the current frontend and backend implementation before marking the requirement complete.
+
+Status: Documented as planned; current status requires confirmation.
+
+QA-005: API documentation consistency
+
+Finding: The repository contains both "PROJECT_CONTEXT.md" and "backend/docs/API_REFERENCE.md", which describe API contracts and implementation status.
+
+Impact: Documentation can become inconsistent when endpoints change during parallel development.
+
+Recommended action: Update the relevant documentation alongside reviewed API changes. Confirm endpoint paths, authentication requirements, request fields and response formats against the code.
+
+Status: Ongoing documentation responsibility.
+
+5. Recommended Verification Priorities
+
+1. Run the existing backend test suite and record the actual result.
+2. Verify authentication and role-based access restrictions.
+3. Check customer data isolation for subscriptions, invoices and payments.
+4. Verify invoice totals, taxes, discounts and payment balance calculations.
+5. Check recurring billing for duplicate invoice prevention.
+6. Confirm that API documentation matches the current endpoint implementations.
+7. Record reproducible failures with the endpoint, request, expected result and actual result.
+
+6. Evidence and Limitations
+
+This report distinguishes documented findings from independently reproduced defects.
+
+No endpoint should be marked failed solely because it is not described in one document. Likewise, the existence of a model, schema or router does not prove that its business workflow is complete.
+
+Before closing a finding, review the relevant source code and tests, and record the evidence and verification date.
+
+7. References
+
+- Repository README: "README.md"
+- Architecture and implementation status: "PROJECT_CONTEXT.md"
+- Backend API reference: "backend/docs/API_REFERENCE.md"
+- API v1 router: "backend/app/api/v1/router.py"
