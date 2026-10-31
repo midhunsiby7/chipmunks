@@ -23,6 +23,7 @@ from app.schemas.subscription import (
     SubscriptionResponse,
     SubscriptionUpdate,
 )
+from app.services.invoice_service import invoice_service
 from app.services.plan_service import compute_next_billing_date, plan_service
 from app.services.tax_discount_service import tax_discount_service
 
@@ -204,7 +205,21 @@ class SubscriptionService:
             db.add(l_obj)
 
         await db.commit()
-        return await self.get_subscription(db, subscription.id, current_user)
+        sub = await self.get_subscription(db, subscription.id, current_user)
+
+        # Auto-generate the initial period invoice so it can be paid immediately
+        try:
+            await invoice_service.generate_invoice_for_subscription(
+                db=db,
+                subscription=sub,
+                period_start=sub.current_period_start,
+                period_end=sub.current_period_end,
+                auto_commit=True,
+            )
+        except Exception as exc:
+            logger.warning("Could not auto-generate initial invoice for subscription %s: %s", sub.id, exc)
+
+        return sub
 
     async def convert_quotation(
         self,
@@ -295,7 +310,46 @@ class SubscriptionService:
         quote.converted_subscription_id = subscription.id
         await db.commit()
 
-        return await self.get_subscription(db, subscription.id, current_user)
+        sub = await self.get_subscription(db, subscription.id, current_user)
+
+        # Auto-generate the initial period invoice for converted subscription
+        try:
+            await invoice_service.generate_invoice_for_subscription(
+                db=db,
+                subscription=sub,
+                period_start=sub.current_period_start,
+                period_end=sub.current_period_end,
+                auto_commit=True,
+            )
+        except Exception as exc:
+            logger.warning("Could not auto-generate initial invoice for converted quotation %s: %s", quote.id, exc)
+
+        return sub
+
+    async def generate_subscription_invoice(
+        self,
+        db: AsyncSession,
+        subscription_id: uuid.UUID,
+        current_user: User,
+    ):
+        """
+        Generates or retrieves the active billing period invoice for a subscription on demand.
+        Enforces customer isolation (customers may only generate for their own subscription).
+        """
+        sub = await self.get_subscription(db, subscription_id, current_user)
+        invoice = await invoice_service.generate_invoice_for_subscription(
+            db=db,
+            subscription=sub,
+            period_start=sub.current_period_start,
+            period_end=sub.current_period_end,
+            auto_commit=True,
+        )
+        if not invoice:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not generate invoice for subscription.",
+            )
+        return await invoice_service.get_invoice(db, invoice.id, current_user)
 
     # ------------------ STATE TRANSITIONS ------------------
 

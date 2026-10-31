@@ -2,13 +2,20 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 import uuid
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class RevenueTrendPoint(BaseModel):
     date_label: str
+    month: Optional[str] = None
     mrr: Decimal
     collections: Decimal
+
+    @model_validator(mode="after")
+    def populate_month(self) -> "RevenueTrendPoint":
+        if not self.month:
+            self.month = self.date_label
+        return self
 
 
 class RecentSubscriptionItem(BaseModel):

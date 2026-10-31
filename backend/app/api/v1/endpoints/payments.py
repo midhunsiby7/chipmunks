@@ -60,6 +60,7 @@ async def get_payment(
 # ------------------ RAZORPAY TEST MODE ENDPOINTS ------------------
 
 
+@router.post("/razorpay/order", response_model=RazorpayOrderResponse, summary="Create Razorpay Order (Alias)")
 @router.post("/razorpay/create-order", response_model=RazorpayOrderResponse, summary="Create Razorpay Order")
 async def create_razorpay_order(
     data: RazorpayOrderCreateRequest,

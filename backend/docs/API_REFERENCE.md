@@ -253,6 +253,11 @@
 * **Description:** Permanently closes subscription.
 * **Auth:** Required (`admin` or `staff` only).
 
+### `POST /subscriptions/{id}/generate-invoice`
+* **Description:** Generates or retrieves the active billing period invoice for this subscription on demand. Idempotent.
+* **Auth:** Required (Customer can only generate for own subscription; Admin/Staff for all).
+* **Response `200 OK`:** Created or retrieved `InvoiceResponse`.
+
 ---
 
 ## 8. Invoices, Recurring Billing & HTML Print View
@@ -289,7 +294,7 @@
 ### `GET /payments` & `POST /payments`
 * **Description:** List or record payments. Enforces overpayment prevention (`payment <= amount_due`). Auto-balances invoice to `paid` or `partially_paid`.
 
-### `POST /payments/razorpay/create-order`
+### `POST /payments/razorpay/create-order` (Alias: `POST /payments/razorpay/order`)
 * **Description:** Generates server-side Razorpay order for checkout modal.
 * **Auth:** Required (Customer for own invoice; Admin/Staff for all).
 * **Request Body:** `{ "invoice_id": "uuid" }`
@@ -345,7 +350,7 @@
   "mrr": "14200.00",
   "arr": "170400.00",
   "revenue_trends": [
-    { "date_label": "2026-10", "mrr": 14200.0, "collections": 28100.0 }
+    { "date_label": "May", "month": "May", "mrr": 14200.0, "collections": 28100.0 }
   ],
   "recent_subscriptions": [ /* Recent items */ ],
   "recent_payments": [ /* Recent items */ ]

@@ -7,6 +7,7 @@ from app.api.deps import get_current_user, get_db, require_roles
 from app.models.subscription import SubscriptionStatus
 from app.models.user import User, UserRole
 from app.schemas.common import PaginatedResponse
+from app.schemas.invoice import InvoiceResponse
 from app.schemas.subscription import (
     SubscriptionCancelRequest,
     SubscriptionCreate,
@@ -108,3 +109,15 @@ async def close_subscription(
         db=db, subscription_id=subscription_id, current_user=current_user
     )
     return SubscriptionResponse.model_validate(sub)
+
+
+@router.post("/{subscription_id}/generate-invoice", response_model=InvoiceResponse, summary="Generate / Retrieve Subscription Invoice")
+async def generate_subscription_invoice(
+    subscription_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> InvoiceResponse:
+    invoice = await subscription_service.generate_subscription_invoice(
+        db=db, subscription_id=subscription_id, current_user=current_user
+    )
+    return InvoiceResponse.model_validate(invoice)
