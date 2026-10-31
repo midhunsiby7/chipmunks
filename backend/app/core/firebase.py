@@ -27,34 +27,49 @@ def initialize_firebase() -> None:
         logger.info("Using Firebase Auth Emulator at %s", settings.FIREBASE_AUTH_EMULATOR_HOST)
 
     if settings.APP_ENV == "testing":
-        # In testing environment, initialize with a test project ID without external credentials
-        firebase_admin.initialize_app(options={"projectId": "test-project"})
-        logger.info("Firebase Admin SDK initialized in testing mode.")
+        # In testing environment, initialize with configured project ID without external credentials
+        firebase_admin.initialize_app(options={"projectId": settings.FIREBASE_PROJECT_ID})
+        logger.info("Firebase Admin SDK initialized in testing mode for project '%s'.", settings.FIREBASE_PROJECT_ID)
         return
 
     cred = None
-    if settings.FIREBASE_CREDENTIALS_PATH and os.path.exists(settings.FIREBASE_CREDENTIALS_PATH):
+    gac_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if gac_path and os.path.exists(gac_path):
+        logger.info("Loading Firebase credentials from GOOGLE_APPLICATION_CREDENTIALS (%s)", gac_path)
+        cred = credentials.Certificate(gac_path)
+    elif settings.FIREBASE_CREDENTIALS_PATH and os.path.exists(settings.FIREBASE_CREDENTIALS_PATH):
+        logger.info("Loading Firebase credentials from FIREBASE_CREDENTIALS_PATH (%s)", settings.FIREBASE_CREDENTIALS_PATH)
         cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
     elif settings.FIREBASE_CREDENTIALS_JSON:
         try:
             cred_dict = json.loads(settings.FIREBASE_CREDENTIALS_JSON)
             cred = credentials.Certificate(cred_dict)
+            logger.info("Loading Firebase credentials from FIREBASE_CREDENTIALS_JSON inline secret")
         except Exception as exc:
             raise FirebaseConfigurationError(f"Invalid FIREBASE_CREDENTIALS_JSON: {exc}") from exc
     elif settings.FIREBASE_AUTH_EMULATOR_HOST:
         cred = None
     else:
-        # In development or production without credentials or emulator, fail explicitly!
-        raise FirebaseConfigurationError(
-            f"No Firebase credentials found for environment '{settings.APP_ENV}'. "
-            "Please provide FIREBASE_CREDENTIALS_PATH or set FIREBASE_AUTH_EMULATOR_HOST."
-        )
+        # Check ApplicationDefault if available, otherwise fail explicitly
+        try:
+            cred = credentials.ApplicationDefault()
+            cred.get_credential()
+            logger.info("Loading Firebase credentials from ApplicationDefault")
+        except Exception:
+            raise FirebaseConfigurationError(
+                f"No Firebase credentials found for environment '{settings.APP_ENV}'. "
+                "Please configure GOOGLE_APPLICATION_CREDENTIALS, FIREBASE_CREDENTIALS_PATH, "
+                "or FIREBASE_CREDENTIALS_JSON pointing to your Firebase service account JSON."
+            )
 
     firebase_admin.initialize_app(
         cred,
         options={"projectId": settings.FIREBASE_PROJECT_ID} if settings.FIREBASE_PROJECT_ID else None,
     )
     logger.info("Firebase Admin SDK successfully initialized for project '%s'.", settings.FIREBASE_PROJECT_ID)
+
+
+_real_initialize_firebase = initialize_firebase
 
 
 def verify_firebase_id_token(token: str) -> Dict[str, Any]:

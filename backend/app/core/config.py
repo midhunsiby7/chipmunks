@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     DATABASE_URL_SYNC: str = "postgresql://brightloop_user:brightloop_password@localhost:5432/brightloop_db"
 
     # Firebase Authentication & Admin SDK
-    FIREBASE_PROJECT_ID: str = "brightloop-hackathon"
+    FIREBASE_PROJECT_ID: str = "subscribtionmanagement"
     FIREBASE_CREDENTIALS_PATH: Optional[str] = None
     FIREBASE_CREDENTIALS_JSON: Optional[str] = None
     FIREBASE_AUTH_EMULATOR_HOST: Optional[str] = None
@@ -72,14 +72,16 @@ class Settings(BaseSettings):
         """Enforce strict production safeguards against missing credentials or email providers."""
         if self.APP_ENV == "production":
             # 1. Require Firebase credentials
+            gac_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
             has_credentials = (
                 (self.FIREBASE_CREDENTIALS_PATH and os.path.exists(self.FIREBASE_CREDENTIALS_PATH))
                 or bool(self.FIREBASE_CREDENTIALS_JSON)
+                or (gac_path and os.path.exists(gac_path))
             )
             if not has_credentials:
                 raise ValueError(
-                    "Production environment (APP_ENV=production) requires valid FIREBASE_CREDENTIALS_PATH "
-                    "or FIREBASE_CREDENTIALS_JSON."
+                    "Production environment (APP_ENV=production) requires valid GOOGLE_APPLICATION_CREDENTIALS, "
+                    "FIREBASE_CREDENTIALS_PATH, or FIREBASE_CREDENTIALS_JSON."
                 )
 
             # 2. Require transactional email provider

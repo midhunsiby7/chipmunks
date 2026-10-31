@@ -191,3 +191,40 @@ async def test_unverified_email_skips_sync(async_client, db_session):
     response = await async_client.get("/api/v1/users/me", headers=headers)
     assert response.status_code == 200
     assert response.json()["email"] == "initial_email@example.com"  # Stays unchanged
+
+
+@pytest.mark.asyncio
+async def test_expired_firebase_token_rejected(async_client):
+    headers = {"Authorization": "Bearer expired-token"}
+    payload = {"full_name": "Jane Customer"}
+    response = await async_client.post("/api/v1/users/profile", json=payload, headers=headers)
+    assert response.status_code == 401
+    assert "expired" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_missing_authorization_header_rejected(async_client):
+    response = await async_client.get("/api/v1/users/me")
+    assert response.status_code in (401, 403)
+
+
+def test_firebase_initialization_missing_credentials_raises_error(monkeypatch):
+    import firebase_admin
+    from app.core.config import settings
+    from app.core.firebase import FirebaseConfigurationError, _real_initialize_firebase
+
+    monkeypatch.setattr(firebase_admin, "_apps", {})
+    monkeypatch.setattr(settings, "APP_ENV", "development")
+    monkeypatch.setattr(settings, "FIREBASE_CREDENTIALS_PATH", None)
+    monkeypatch.setattr(settings, "FIREBASE_CREDENTIALS_JSON", None)
+    monkeypatch.setattr(settings, "FIREBASE_AUTH_EMULATOR_HOST", None)
+    monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+
+    with pytest.raises(FirebaseConfigurationError) as exc_info:
+        _real_initialize_firebase()
+    assert "No Firebase credentials found" in str(exc_info.value)
+
+
+def test_firebase_backend_project_id_matches_frontend():
+    from app.core.config import settings
+    assert settings.FIREBASE_PROJECT_ID == "subscribtionmanagement"
