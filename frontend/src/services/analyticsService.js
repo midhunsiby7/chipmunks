@@ -7,6 +7,7 @@ import { planService } from './planService';
 import { productService } from './productService';
 import { discountService } from './discountService';
 import { taxService } from './taxService';
+import { fetchAllPages } from '../utils/paginationHelper';
 
 /**
  * Service for Executive & Operational Analytics, Reporting, and Data Aggregation
@@ -56,47 +57,29 @@ export const analyticsService = {
    * }>}
    */
   async fetchCompleteDataset() {
-    // 1. Fetch all invoices across all pages (up to 1,000 safety limit)
+    // 1. Fetch all invoices across all pages without artificial caps
     let invoices = [];
     try {
-      let page = 1;
-      let totalPages = 1;
-      do {
-        const invRes = await invoiceService.listInvoices({ page, pageSize: 100 });
-        invoices = invoices.concat(invRes.items || []);
-        totalPages = invRes.pages || 1;
-        page += 1;
-      } while (page <= totalPages && page <= 10);
+      const invResult = await fetchAllPages((p) => invoiceService.listInvoices(p), { pageSize: 100 });
+      invoices = invResult.items;
     } catch (err) {
       console.warn('[Brightloop Analytics] Could not fetch complete invoices dataset:', err);
     }
 
-    // 2. Fetch all subscriptions across all pages
+    // 2. Fetch all subscriptions across all pages without artificial caps
     let subscriptions = [];
     try {
-      let page = 1;
-      let totalPages = 1;
-      do {
-        const subRes = await subscriptionService.listSubscriptions({ page, pageSize: 100 });
-        subscriptions = subscriptions.concat(subRes.items || []);
-        totalPages = subRes.pages || 1;
-        page += 1;
-      } while (page <= totalPages && page <= 10);
+      const subResult = await fetchAllPages((p) => subscriptionService.listSubscriptions(p), { pageSize: 100 });
+      subscriptions = subResult.items;
     } catch (err) {
       console.warn('[Brightloop Analytics] Could not fetch complete subscriptions dataset:', err);
     }
 
-    // 3. Fetch all payments across all pages
+    // 3. Fetch all payments across all pages without artificial caps
     let payments = [];
     try {
-      let page = 1;
-      let totalPages = 1;
-      do {
-        const payRes = await paymentService.listPayments({ page, pageSize: 100 });
-        payments = payments.concat(payRes.items || []);
-        totalPages = payRes.pages || 1;
-        page += 1;
-      } while (page <= totalPages && page <= 10);
+      const payResult = await fetchAllPages((p) => paymentService.listPayments(p), { pageSize: 100 });
+      payments = payResult.items;
     } catch (err) {
       console.warn('[Brightloop Analytics] Could not fetch complete payments dataset:', err);
     }

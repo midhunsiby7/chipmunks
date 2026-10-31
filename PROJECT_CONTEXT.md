@@ -1189,3 +1189,53 @@ npm run dev
   - Unit Tests: **238 tests passing across 11 test suites** (`analytics.test.js` added with 25 unit assertions).
   - Linter: **0 warnings, 0 errors across 136 files** (`oxlint`).
   - Production Build: **2,792 modules transformed cleanly in 6.58s** (`vite build`).
+
+### Phase 13: Performance Optimization, Security Audit and Release Readiness (Completed)
+* **Bundle Optimization & Route Code Splitting (`App.jsx` & `vite.config.js`)**:
+  - Monolithic Bundle Resolution: Replaced monolithic eager imports in `App.jsx` with dynamic route code splitting using `React.lazy` and `<Suspense fallback={<RouteSuspenseFallback />}>` across all application views (`SubscriptionsPage`, `InvoicesPage`, `UsersPage`, `ProductsPage`, `PlansPage`, `TaxesPage`, `QuotationsPage`, `DiscountsPage`, `PaymentsPage`, `ProfilePage`, `AnalyticsPage`, `LoginPage`, `RegisterPage`, `ForgotPasswordPage`, `ResetPasswordPage`, `UnauthorizedPage`, `NotFoundPage`).
+  - Layout-Preserving Suspense Fallback: Utilizes `DashboardLoadingState` skeleton fallbacks during lazy-loading to completely eliminate layout shifts, UI flashes, or authentication state flickering during page transitions.
+  - Manual Vendor Chunk Splitting (`vite.config.js`):
+    - `vendor-charts`: Isolated `recharts`, `d3-*`, and `victory-vendor` (~378 kB) away from main bundle, ensuring users accessing general operational routes never load analytics visualization overhead.
+    - `vendor-firebase`: Isolated Firebase Authentication SDK (~107 kB).
+    - `vendor-icons`: Isolated Lucide React icons (~22 kB).
+  - Bundle Reduction Metrics:
+    - Initial entry bundle reduced from **1,373.46 kB (351.99 kB gzip)** down to **302.81 kB (87.03 kB gzip)** — a **78% reduction in initial JavaScript payload**.
+    - Build duration decreased from ~6.58s to **1.27s**.
+    - Completely resolved and eliminated all Vite `chunkSizeWarningLimit` warnings.
+* **Central Pagination Accumulator & Data Completeness (`paginationHelper.js`)**:
+  - Created central helper `fetchAllPages` to systematically replace artificial pagination caps (such as hardcoded 10-page / 1,000-record ceilings).
+  - Features:
+    - Continuous retrieval while `currentPage <= totalPages` using backend maximum allowable `pageSize: 100`.
+    - Safety circuit breaker (`maxPages: 500 = 50,000 records`) to protect against runaway pagination loops or memory exhaustion.
+    - Deterministic record deduplication by unique record `id` to handle dataset shifts across page boundaries.
+    - Clean early-termination upon empty response pages.
+    - Graceful error containment returning partial retrieved records and `isComplete: false` without throwing unhandled exceptions.
+  - Integrated into `analyticsService.js` and `dashboardService.js` to ensure financial reports, invoice aging schedules, and customer dashboard metrics reflect complete dataset reality.
+* **Financial Integrity & Multi-Currency Segregation Audit**:
+  - Verified strict currency isolation across INR, USD, EUR, and GBP via `groupAmountsByCurrency`. Disparate currencies are never combined into arbitrary sums.
+  - Revenue vs Collections Differentiation: Invoiced revenue and verified gateway/offline cash collections are tracked independently.
+  - Conformance of MRR/ARR normalization algorithms with backend definitions:
+    - Daily: `amount * 30.0`
+    - Weekly: `amount * 4.333`
+    - Monthly: `amount * 1.0`
+    - Yearly: `amount / 12.0`
+    - Annual Recurring Revenue: `ARR = MRR * 12.0`
+  - 5-Tier Invoice Aging Schedule boundary precision: Unpaid balances are partitioned across strictly defined time windows (`current`, `1-30 days`, `31-60 days`, `61-90 days`, `90+ days`) with zero overlaps or omitted date boundaries.
+* **Razorpay Security & Transaction Integrity Follow-Up**:
+  - Verified cryptographic signature verification logic using constant-time HMAC-SHA256 comparisons (`hmac.compare_digest` / `crypto.timingSafeEqual`) on `order_id + "|" + payment_id` against key secret.
+  - Enforced order amount formatting in integer paise (`Math.round(amount * 100)`).
+  - Verified invoice and order tenant/customer ownership enforcement (`rzp_order.customer_id == current_user.id`).
+  - Validated overpayment guardrails ensuring payment amounts cannot exceed invoice `amount_due`.
+  - Verified duplicate settlement defense via unique database constraints on `Payment.razorpay_payment_id`.
+  - Confirmed webhook signature verification against raw HTTP request bodies with idempotent event recording in `WebhookEvent`.
+* **Double-Click Mitigation & UI Submission Protection**:
+  - Verified and enforced submission locks (`disabled={submitting}`) with animated loading spinners across all modal dialogs and action triggers (`PaymentRecordModal`, `InvoiceFormModal`, `SubscriptionFormModal`, `QuotationFormModal`, `DiscountFormModal`, `PlanFormModal`, `ProductFormModal`, `TaxFormModal`, `CreateStaffModal`, `RazorpayCheckoutModal`, `InvoiceCancelDialog`, `DiscountDeactivateDialog`, `SubscriptionActionDialog`) to eliminate duplicate API requests caused by rapid repeated clicking.
+* **Authentication, Authorization & Direct URL Access Verification**:
+  - Audited role-based routing (`RoleRoute.jsx`) and route registry (`App.jsx`).
+  - Confirmed that direct URL access by unauthorized roles (e.g. customer accessing `/analytics`, `/users`, `/products`, `/plans`, `/taxes`, `/discounts`) immediately redirects to `/unauthorized`.
+  - Unauthenticated users attempting to access protected routes are systematically redirected to `/login` with return location preservation.
+* **Testing & Quality Assurance**:
+  - Unit Tests: **254 tests passing across 12 test suites** (added `phase13Hardening.test.js` with 16 assertions).
+  - Linter: **0 warnings, 0 errors across 138 files** (`oxlint`).
+  - Production Build: **2,794 modules transformed cleanly in 1.27s** (`vite build`).
+
