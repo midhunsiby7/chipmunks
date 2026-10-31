@@ -1,0 +1,122 @@
+Backend QA Test Cases
+
+Purpose
+
+This document defines test cases for the Brightloop Subscription Management System. These tests describe expected behaviour and must not be considered passed until they have been executed and verified.
+
+Test Status
+
+- Not run: The test has not been executed.
+- Pass: Actual behaviour matches the expected result.
+- Fail: Actual behaviour differs from the expected result.
+- Blocked: Testing cannot proceed because of missing functionality or dependencies.
+
+1. Health Check
+
+TC-001: Check API health
+
+- Method: GET
+- Endpoint: "/health"
+- Expected result: Returns a successful HTTP response containing service-status information.
+- Status: Not run
+
+2. Authentication and Access Control
+
+TC-002: Register with valid details
+
+- Scenario: Submit a valid email and password.
+- Expected result: The account is created if registration is implemented.
+- Status: Not run
+
+TC-003: Register with a duplicate email
+
+- Scenario: Submit an email that is already registered.
+- Expected result: The request is rejected with a suitable validation error if registration is implemented.
+- Status: Not run
+
+TC-004: Access a protected endpoint without authentication
+
+- Scenario: Send a request without valid authentication credentials.
+- Expected result: Access is denied if the endpoint requires authentication.
+- Status: Not run
+
+3. Products and Plans
+
+TC-005: Create a product with valid details
+
+- Scenario: Submit all required product fields.
+- Expected result: The product is saved and returned with an identifier if implemented.
+- Status: Not run
+
+TC-006: Submit a product with missing required fields
+
+- Scenario: Omit a required product field.
+- Expected result: The request is rejected with a clear validation error if implemented.
+- Status: Not run
+
+4. Subscriptions
+
+TC-007: Create a subscription
+
+- Scenario: Submit valid customer and plan details.
+- Expected result: A subscription is created with the correct associations if implemented.
+- Status: Not run
+
+TC-008: Cancel a subscription
+
+- Scenario: Request cancellation of an existing subscription.
+- Expected result: The subscription status changes according to the defined business rules if implemented.
+- Status: Not run
+
+TC-009: Renew an expired subscription
+
+- Scenario: Request renewal of an expired subscription.
+- Expected result: Renewal follows the configured billing and subscription rules if implemented.
+- Status: Not run
+
+5. Invoices and Payments
+
+TC-010: Generate an invoice
+
+- Scenario: Generate an invoice for a subscription.
+- Expected result: The invoice contains the correct customer, line items, totals and taxes if implemented.
+- Status: Not run
+
+TC-011: Record a payment
+
+- Scenario: Record a payment against an invoice.
+- Expected result: The payment is associated with the correct invoice and the outstanding balance is updated if implemented.
+- Status: Not run
+
+TC-012: Prevent duplicate payment processing
+
+- Scenario: Submit the same payment operation more than once.
+- Expected result: Duplicate payments are prevented according to the system's payment rules.
+- Status: Not run
+
+6. Discounts and Input Validation
+
+TC-013: Apply a valid discount
+
+- Scenario: Apply a discount that meets the configured rules.
+- Expected result: The discount is calculated correctly if implemented.
+- Status: Not run
+
+TC-014: Reject an expired discount
+
+- Scenario: Apply a discount after its expiry date.
+- Expected result: The expired discount is rejected if expiry validation is implemented.
+- Status: Not run
+
+TC-015: Reject invalid input
+
+- Scenario: Submit invalid data to an implemented endpoint.
+- Expected result: The API returns an appropriate error response instead of an unhandled server error.
+- Status: Not run
+
+QA Notes
+
+- These are proposed test cases; they have not been executed.
+- Confirm endpoint paths, request fields and business rules against the actual implementation before testing.
+- Features without implemented endpoints should be marked Blocked or Not available for testing, with supporting evidence.
+- Record the actual result and evidence when each test is executed.
