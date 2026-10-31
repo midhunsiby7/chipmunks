@@ -6,6 +6,7 @@ import { userService } from '../../services/userService';
 import { productService } from '../../services/productService';
 import { planService } from '../../services/planService';
 import { taxService } from '../../services/taxService';
+import { discountService } from '../../services/discountService';
 import { formatCurrency } from '../../utils/formatters';
 import {
   validateQuotationPayload,
@@ -23,6 +24,7 @@ import {
   Loader2,
   Percent,
   Tag,
+  CheckCircle2,
   Info,
 } from 'lucide-react';
 
@@ -61,6 +63,8 @@ function QuotationFormBody({
   // Section D: Taxes & Discount
   const [taxRuleId, setTaxRuleId] = useState('');
   const [discountCode, setDiscountCode] = useState('');
+  const [promoValidation, setPromoValidation] = useState(null);
+  const [validatingPromo, setValidatingPromo] = useState(false);
 
   // Dropdown reference options
   const [customers, setCustomers] = useState([]);
@@ -201,7 +205,44 @@ function QuotationFormBody({
   const selectedTaxRule = taxRules.find((t) => t.id === taxRuleId) || null;
 
   // Informational preview totals
-  const totals = calculateQuotationTotals(lines, selectedTaxRule, 0);
+  const appliedDiscountDeduction = promoValidation?.valid
+    ? Number(promoValidation.calculated_discount) || 0
+    : 0;
+  const totals = calculateQuotationTotals(lines, selectedTaxRule, appliedDiscountDeduction);
+
+  const handleVerifyPromo = async () => {
+    if (!discountCode.trim()) {
+      setPromoValidation(null);
+      return;
+    }
+
+    const currentSubtotal = lines.reduce((acc, l) => {
+      const q = Number(l.quantity) || 0;
+      const p = Number(l.unit_price) || 0;
+      return acc + q * p;
+    }, 0);
+
+    const totalQty = lines.reduce((acc, l) => acc + (Number(l.quantity) || 0), 0);
+
+    setValidatingPromo(true);
+    try {
+      const res = await discountService.validateDiscountCode({
+        code: discountCode.trim(),
+        amount: currentSubtotal,
+        quantity: totalQty,
+      });
+      setPromoValidation(res);
+    } catch (err) {
+      setPromoValidation({
+        valid: false,
+        code: discountCode.trim().toUpperCase(),
+        calculated_discount: 0,
+        message: err?.response?.data?.detail || err?.message || 'Invalid or inapplicable discount code.',
+      });
+    } finally {
+      setValidatingPromo(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -587,16 +628,65 @@ function QuotationFormBody({
               <label htmlFor="quote-discount-code-input" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
                 Discount / Coupon Code (Optional)
               </label>
-              <input
-                id="quote-discount-code-input"
-                type="text"
-                placeholder="e.g. PROMO20"
-                value={discountCode}
-                onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                className="w-full px-3 py-2 text-sm font-mono uppercase bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+              <div className="flex space-x-2">
+                <input
+                  id="quote-discount-code-input"
+                  type="text"
+                  placeholder="e.g. PROMO20"
+                  value={discountCode}
+                  onChange={(e) => {
+                    setDiscountCode(e.target.value.toUpperCase());
+                    if (promoValidation) setPromoValidation(null);
+                  }}
+                  className="flex-1 px-3 py-2 text-sm font-mono uppercase bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleVerifyPromo}
+                  disabled={!discountCode.trim() || validatingPromo}
+                  className="shrink-0 text-xs px-3"
+                >
+                  {validatingPromo ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    'Verify Code'
+                  )}
+                </Button>
+              </div>
+
+              {promoValidation && (
+                <div
+                  className={`mt-2 p-2.5 rounded-lg text-xs flex items-start space-x-2 border ${
+                    promoValidation.valid
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : 'bg-red-50 text-red-800 border-red-200'
+                  }`}
+                >
+                  {promoValidation.valid ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1">
+                    <span className="font-semibold block">
+                      {promoValidation.valid
+                        ? `Promo Applied: ${promoValidation.code}`
+                        : 'Invalid Promotion'}
+                    </span>
+                    <span>{promoValidation.message}</span>
+                    {promoValidation.valid && (
+                      <span className="block font-bold text-emerald-700 mt-0.5">
+                        Deduction: -{formatCurrency(promoValidation.calculated_discount)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <p className="text-[11px] text-slate-500 mt-1">
-                Verified server-side via backend discount engine upon creation
+                Verified live via backend discount engine before quotation creation.
               </p>
             </div>
           </div>
@@ -611,6 +701,13 @@ function QuotationFormBody({
               <span>Subtotal:</span>
               <span className="font-semibold text-slate-800">{formatCurrency(totals.subtotal)}</span>
             </div>
+
+            {appliedDiscountDeduction > 0 && (
+              <div className="flex justify-between text-xs text-emerald-700 font-medium">
+                <span>Promotional Discount:</span>
+                <span>-{formatCurrency(appliedDiscountDeduction)}</span>
+              </div>
+            )}
 
             {selectedTaxRule && (
               <div className="flex justify-between text-xs text-slate-600">

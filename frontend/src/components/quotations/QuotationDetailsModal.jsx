@@ -123,11 +123,16 @@ export default function QuotationDetailsModal({
               </span>
             </div>
             {quotation.converted_subscription_id && (
-              <div className="flex justify-between py-1 border-b border-slate-100 text-indigo-700">
+              <div className="flex justify-between items-center py-1 border-b border-slate-100 text-indigo-700">
                 <span className="font-medium">Active Subscription:</span>
-                <span className="font-mono text-[11px] font-bold">
-                  {quotation.converted_subscription_id.slice(0, 8)}...
-                </span>
+                <a
+                  href={`/subscriptions?id=${quotation.converted_subscription_id}`}
+                  className="font-mono text-[11px] font-bold text-indigo-600 hover:text-indigo-800 underline flex items-center gap-1"
+                  title="View provisioned subscription"
+                >
+                  <span>{quotation.converted_subscription_id.slice(0, 8)}...</span>
+                  <span className="text-[10px]">↗</span>
+                </a>
               </div>
             )}
           </div>

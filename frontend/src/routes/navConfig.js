@@ -97,8 +97,7 @@ export const NAV_ITEMS = [
     icon: Tag,
     section: 'Sales',
     roles: ['admin', 'staff'],
-    status: 'planned',
-    plannedPhase: 'Phase 5',
+    status: 'active',
   },
   {
     id: 'payments',
