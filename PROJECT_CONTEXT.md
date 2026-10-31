@@ -950,3 +950,46 @@ npm run dev
   - Unit Tests: 118 tests passing across 6 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`, `quotations.test.js`, `discounts.test.js`).
   - Linter: 0 warnings, 0 errors across 101 files (`oxlint`).
   - Production Build: 2,186 modules transformed cleanly in 1.59s (`vite build`).
+
+### Phase 8: Subscription Management and Lifecycle (Completed)
+* **Subscription Catalogue (`SubscriptionsPage.jsx`)**:
+  - Live server-side paginated catalogue displaying Subscription Code (with quick copy), Subscriber details, Plan & Cadence, Period & Next Billing dates, Total Amount, and Status Badges.
+  - KPI summary metrics: Total Subscriptions, Active Contracts, Paused/Trialing count, and loaded Period Contract Value sum.
+  - Search filter with 300ms debouncing across subscription codes, notes, and customer names/emails.
+  - Filter toolbar for Subscription Status (`all`, `active`, `paused`, `trialing`, `cancelled`, `closed`, `expired`, `confirmed`, `draft`), Cadence (`all`, `monthly`, `yearly`, `weekly`, `daily`), and Customer Account (Admin & Staff only).
+  - Deep-linking URL param support (`?id=...` and `?customer_id=...`) for instant inspection from Quotations or Customer directories.
+  - Action buttons for Viewing full contract specifications, and quick lifecycle triggers (Pause, Resume, Cancel, Close).
+* **Subscription Creation (`SubscriptionFormModal.jsx`)**:
+  - Section A (Customer Assignment): Active customer dropdown from `userService` for Admin/Staff, or auto-locked to authenticated user profile for Customer self-service.
+  - Section B (Plan Association & Seats): Plan selector with dynamic cadence and minimum quantity enforcement.
+  - Section C (Supplementary Product Lines): Multi-item product variant add-on picker with live unit price and line subtotal calculations.
+  - Section D (Terms & Schedule): Effective Start Date/Time, Payment Terms (`due_on_receipt`, `net_15`, `net_30`, `net_60`), Trial Days, and internal/contract notes.
+  - Section E (Financial Summary & Coupons): Tax rule association, live promotional discount code verification via `discountService.validateDiscountCode`, and real-time financial summary (Subtotal, Discount deduction, Tax liability, and Grand Total).
+* **Subscription Inspection (`SubscriptionDetailsModal.jsx`)**:
+  - Detailed contract breakdown showing Contract Value, Status badge, One-click Code Copy, Customer Account details, Plan Association & Cadence, and Next Billing Event.
+  - Itemized Lines Table detailing Base Plan and supplementary variant add-ons.
+  - Financial Breakdown (Subtotal, Discount, Tax, Grand Total).
+  - Lifecycle History Audit Timeline displaying chronological provisioning, effective start, pause, cancellation, closure, and scheduled billing milestones.
+  - Action toolbar triggering lifecycle state transitions according to backend rules.
+* **Lifecycle State Transitions (`SubscriptionActionDialog.jsx`)**:
+  - Subscription Pause (`POST /subscriptions/{id}/pause`): Suspends recurring billing with optional reason logging.
+  - Subscription Resume (`POST /subscriptions/{id}/resume`): Restores paused contract to Active status.
+  - Subscription Cancellation (`POST /subscriptions/{id}/cancel`): Supports cancellation at current period end (`cancel_at_period_end = true`) or immediate termination (`cancel_at_period_end = false`) with reason logging.
+  - Subscription Closure (`POST /subscriptions/{id}/close`): Permanent contract closure restricted to Admin and Staff.
+* **Quotation Conversion Integration (`QuotationDetailsModal.jsx`)**:
+  - Direct deep link from accepted converted quotation to the provisioned subscription record (`/subscriptions?id=...`).
+* **API Service Architecture (`subscriptionService.js`)**:
+  - Centralized Axios client integrating `listSubscriptions`, `getSubscription`, `createSubscription`, `pauseSubscription`, `resumeSubscription`, `cancelSubscription`, `closeSubscription`, and `convertQuotationToSubscription`.
+* **Validation & Business Logic (`subscriptionValidation.js`)**:
+  - Payload validation ensuring valid customer and plan selection, minimum plan quantity compliance, non-negative add-on pricing, and non-negative trial days.
+  - Status badge metadata generator for all 9 backend subscription statuses (`active`, `paused`, `cancelled`, `closed`, `expired`, `trialing`, `confirmed`, `draft`, `quotation`).
+  - State machine transition authorization helpers (`canPauseSubscription`, `canResumeSubscription`, `canCancelSubscription`, `canCloseSubscription`).
+  - Deterministic subscription financial calculation preview engine.
+* **Missing Backend Capabilities Documented**:
+  - `PUT /api/v1/subscriptions/{id}`: Not exposed in backend router.
+  - Manual on-demand renewal endpoint `POST /api/v1/subscriptions/{id}/renew`: Renewal is handled automatically via recurring invoice generation in `invoice_service.py` (Phase 9).
+  - Dedicated lifecycle audit history endpoint `GET /api/v1/subscriptions/{id}/history`: Historical events are derived from timestamps (`paused_at`, `cancelled_at`, `closed_at`) and `subscription.notes`.
+* **Testing & Quality Assurance**:
+  - Unit Tests: 138 tests passing across 7 test suites (`authAndPolicy.test.js`, `phase3.test.js`, `products.test.js`, `plansAndTaxes.test.js`, `quotations.test.js`, `discounts.test.js`, `subscriptions.test.js`).
+  - Linter: 0 warnings, 0 errors across 107 files (`oxlint`).
+  - Production Build: 2,191 modules transformed cleanly in 3.52s (`vite build`).

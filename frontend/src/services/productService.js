@@ -40,6 +40,13 @@ export const productService = {
   },
 
   /**
+   * Alias for listProducts for compatibility across catalog views.
+   */
+  async getProducts(params) {
+    return this.listProducts(params);
+  },
+
+  /**
    * Creates a new catalog product with optional inline initial variants.
    *
    * @param {{
