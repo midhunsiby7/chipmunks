@@ -30,11 +30,15 @@ export function computeCustomerMetrics({
   quotations = [],
   invoices = [],
   payments = [],
+  totalActiveSubscriptions = null,
+  totalPendingQuotations = null,
 } = {}) {
   const activeSubsList = (subscriptions || []).filter(
     (s) => (s.status || '').toLowerCase() === 'active'
   );
-  const activeSubscriptions = activeSubsList.length;
+  const activeSubscriptions = totalActiveSubscriptions !== null
+    ? totalActiveSubscriptions
+    : activeSubsList.length;
 
   let upcomingRenewal = null;
   if (activeSubsList.length > 0) {
@@ -47,9 +51,11 @@ export function computeCustomerMetrics({
     upcomingRenewal = nextSub?.next_billing_date || nextSub?.current_period_end || null;
   }
 
-  const pendingQuotations = (quotations || []).filter(
-    (q) => (q.status || '').toLowerCase() === 'sent'
-  ).length;
+  const pendingQuotations = totalPendingQuotations !== null
+    ? totalPendingQuotations
+    : (quotations || []).filter(
+        (q) => (q.status || '').toLowerCase() === 'sent'
+      ).length;
 
   let outstandingAmount = 0;
   let unpaidInvoicesCount = 0;

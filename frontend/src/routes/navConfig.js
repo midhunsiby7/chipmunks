@@ -116,8 +116,7 @@ export const NAV_ITEMS = [
     icon: BarChart3,
     section: 'Intelligence',
     roles: ['admin', 'staff'],
-    status: 'planned',
-    plannedPhase: 'Phase 7',
+    status: 'active',
   },
   {
     id: 'settings',

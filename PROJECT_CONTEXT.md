@@ -1145,3 +1145,47 @@ npm run dev
   - Unit Tests: 213 tests passing across 10 test suites (`customerPortal.test.js` added with 27 individual assertions).
   - Linter: 0 warnings, 0 errors across 125 files (`oxlint`).
   - Production Build: 2,206 modules transformed cleanly in 3.50s (`vite build`).
+
+### Phase 12: Advanced Analytics, Reporting and Exports (Completed)
+* **Executive & Operational Analytics Center (`AnalyticsPage.jsx`, `analyticsService.js`, `analyticsUtils.js`)**:
+  - Replaced legacy placeholder at `/analytics` with a full-featured reporting dashboard accessible to Admin and Staff (`<RoleRoute allowedRoles={['admin', 'staff']}>`).
+  - Seamless tabbed interface spanning six dedicated analytical domains:
+    1. `Executive Overview`: Core financial metrics (MRR, ARR, Total Invoiced, Verified Collections, Outstanding Receivables) and interactive Recharts time-series velocity chart.
+    2. `Subscriptions`: Contract lifecycle distribution (Active, Paused, Closed, Cancelled, Trialing), billing intervals, plan popularity rankings, and recent subscription records.
+    3. `Invoices & Aging`: Receivables aging schedule (5-tier past-due analysis), overdue default exposure, and top indebted customer accounts with deep links.
+    4. `Payments & Gateway`: Settlement volume, online Razorpay capture vs offline manual wire distribution, payment method split, and recent payment ledger.
+    5. `Customers & Products`: Tenant growth, active subscriber conversion rate, indebted account counts, and catalog inventory performance.
+    6. `Taxes & Discounts`: Statutory tax liability assessed on historical invoices and promotional coupon redemption tracking.
+* **Backend API Integration (`analyticsService.js`)**:
+  - Primary Router: Consumes `GET /api/v1/analytics/dashboard` delivering certified PostgreSQL database aggregates (`AnalyticsDashboardResponse`: `total_customers`, `total_products`, `active_subscriptions`, `total_revenue`, `total_collections`, `outstanding_amount`, `overdue_amount`, `mrr`, `arr`, `revenue_trends`, `recent_subscriptions`, `recent_payments`).
+  - Full Dataset Engine (`fetchCompleteDataset`): Implements multi-page pagination accumulation across `/invoices`, `/subscriptions`, `/payments`, `/users`, `/plans`, `/products`, `/discounts`, and `/taxes`, guaranteeing that all filtering, aging, and export calculations operate on the complete authorized dataset without pagination cut-offs.
+* **Multi-Currency Segregation & Precision (`analyticsUtils.js`)**:
+  - Encapsulated `groupAmountsByCurrency` to strictly isolate financial totals by ISO currency code (INR, USD, EUR, GBP). Disparate currencies are never summed together into misleading aggregates.
+  - Provided a dedicated Multi-Currency Reconciliation Ledger table displaying invoiced, collected, outstanding, and collection efficiency percentages per currency.
+* **Interactive Filtering Toolbar (`AnalyticsFilterBar.jsx`)**:
+  - Standardized date-range presets (`today`, `7d`, `30d`, `this_month`, `last_month`, `this_quarter`, `this_year`, `all`, `custom`) with boundary resolution (`getDateRangeBoundaries`).
+  - Custom date range picker with end-of-day boundary extension.
+  - Currency filter with dynamic ledger recalculation.
+  - Active filter badges with one-click "Reset Filters" action.
+* **Tabular CSV Export Engine & Formula Injection Defense (CWE-1236)**:
+  - Client-side CSV generator supporting four comprehensive export types:
+    1. Executive KPI Summary (`brightloop_executive_summary_*.csv`)
+    2. All Filtered Invoices (`brightloop_invoices_report_*.csv`)
+    3. All Filtered Subscriptions (`brightloop_subscriptions_report_*.csv`)
+    4. All Settled Payments (`brightloop_payments_report_*.csv`)
+  - Strict CSV Formula Injection defense (`sanitizeCsvValue`): automatically prepends a single quote (`'`) to any cell value starting with formula-triggering characters (`=`, `+`, `-`, `@`, `\t`, `\r`), and escapes RFC 4180 quotes/commas.
+* **Customer Dashboard Pagination & Data Completeness Audit**:
+  - Identified that Phase 11 customer dashboard previously used limited query pages (`pageSize: 10`, `pageSize: 50`) which risked truncating accounts with larger volumes.
+  - Refactored `dashboardService.getCustomerMetrics` and `computeCustomerMetrics` to consume backend pagination totals (`totalActiveSubscriptions`, `totalPendingQuotations`) and paginate all customer invoices across pages for true balance calculation.
+* **Razorpay Security Audit Follow-Up (Complete Backend Verification)**:
+  - Cryptographic Verification: Verified that `payment_service.py` (`verify_razorpay_payment`) computes HMAC-SHA256 on `order_id + "|" + payment_id` against `RAZORPAY_KEY_SECRET` and uses constant-time `hmac.compare_digest`.
+  - Order & Ownership Binding: Confirmed that order creation derives amount in paise directly from server-side `invoice.amount_due`, locks currency, and enforces `rzp_order.customer_id == current_user.id`.
+  - Overpayment & Replay Prevention: Confirmed `pay_amount <= invoice.amount_due` check and deduplication via `select(Payment).where(Payment.razorpay_payment_id == ...)` preventing duplicate settlement.
+  - Webhook Security & Idempotency: Verified that `process_webhook` reads `request.body()`, validates signature against raw bytes, and enforces idempotency via the `WebhookEvent` database table.
+* **Role-Based Access Enforcement**:
+  - Promoted `analytics` navigation item in `navConfig.js` to `status: 'active'`.
+  - Accessible strictly to `admin` and `staff` roles; completely hidden and route-blocked from `customer` users.
+* **Testing & Quality Assurance**:
+  - Unit Tests: **238 tests passing across 11 test suites** (`analytics.test.js` added with 25 unit assertions).
+  - Linter: **0 warnings, 0 errors across 136 files** (`oxlint`).
+  - Production Build: **2,792 modules transformed cleanly in 6.58s** (`vite build`).

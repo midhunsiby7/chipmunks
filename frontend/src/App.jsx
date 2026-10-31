@@ -17,6 +17,7 @@ import QuotationsPage from './pages/QuotationsPage';
 import DiscountsPage from './pages/DiscountsPage';
 import PaymentsPage from './pages/PaymentsPage';
 import ProfilePage from './pages/ProfilePage';
+import AnalyticsPage from './pages/AnalyticsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -24,10 +25,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import NotFoundPage from './pages/NotFoundPage';
 
-import {
-  BarChart3,
-  Settings as SettingsIcon,
-} from 'lucide-react';
+import { Settings as SettingsIcon } from 'lucide-react';
 
 export default function App() {
   return (
@@ -147,18 +145,12 @@ export default function App() {
               }
             />
 
-            {/* 10. Analytics (Admin & Staff Only) */}
+            {/* 11. Advanced Analytics & Reporting (Admin & Staff Only) */}
             <Route
               path="analytics"
               element={
                 <RoleRoute allowedRoles={['admin', 'staff']}>
-                  <ModulePlaceholderPage
-                    title="Revenue Analytics"
-                    section="Intelligence"
-                    plannedPhase="Phase 7"
-                    description="Comprehensive MRR, ARR, churn rate curves, renewal rates, and cohort retention insights."
-                    icon={BarChart3}
-                  />
+                  <AnalyticsPage />
                 </RoleRoute>
               }
             />
