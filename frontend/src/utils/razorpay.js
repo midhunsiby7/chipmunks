@@ -93,14 +93,20 @@ export async function launchRazorpayCheckout({
     },
   };
 
-  const rzp = new window.Razorpay(options);
+  try {
+    const rzp = new window.Razorpay(options);
 
-  if (typeof rzp.on === 'function') {
-    rzp.on('payment.failed', (err) => {
-      onFailure?.(err?.error || err);
-    });
+    if (typeof rzp.on === 'function') {
+      rzp.on('payment.failed', (err) => {
+        onFailure?.(err?.error || err);
+      });
+    }
+
+    rzp.open();
+    return true;
+  } catch (err) {
+    console.warn('[Razorpay] Modal initialization caught error:', err);
+    onFailure?.(err);
+    return false;
   }
-
-  rzp.open();
-  return true;
 }

@@ -24,12 +24,41 @@ import { dashboardService } from '../../services/dashboardService';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { getInvoiceStatusBadge } from '../../utils/invoiceValidation';
 import { getPaymentStatusBadge, getPaymentMethodBadge } from '../../utils/paymentValidation';
+import CustomerPlanShowcase from './CustomerPlanShowcase';
+import SubscriptionFormModal from '../subscriptions/SubscriptionFormModal';
 
 export default function CustomerDashboardView() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [successNotice, setSuccessNotice] = useState(null);
+
+  const reloadMetrics = () => {
+    dashboardService
+      .getCustomerMetrics()
+      .then((data) => {
+        setMetrics(data);
+      })
+      .catch((err) => {
+        console.error('[Brightloop CustomerDashboard] Error reloading metrics:', err);
+      });
+  };
+
+  const handleSelectPlan = (plan) => {
+    setSelectedPlanId(plan.id);
+    setIsPlanModalOpen(true);
+  };
+
+  const handleSubscriptionSuccess = (createdSub) => {
+    reloadMetrics();
+    setSuccessNotice({
+      code: createdSub?.subscription_code || 'New Subscription',
+      id: createdSub?.id,
+    });
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -91,6 +120,18 @@ export default function CustomerDashboardView() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => {
+                setSelectedPlanId('');
+                setIsPlanModalOpen(true);
+              }}
+              className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs"
+            >
+              <Repeat className="w-3.5 h-3.5 mr-1.5" />
+              Browse Plans
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => navigate('/invoices')}
               className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs"
             >
@@ -109,6 +150,40 @@ export default function CustomerDashboardView() {
           </div>
         </div>
       </div>
+
+      {/* SUCCESS CONFIRMATION BANNER */}
+      {successNotice && (
+        <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between gap-3 text-emerald-900 shadow-xs">
+          <div className="flex items-center space-x-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <div>
+              <h4 className="text-sm font-bold">Subscription Successfully Created!</h4>
+              <p className="text-xs text-emerald-700 mt-0.5">
+                Subscription <strong>{successNotice.code}</strong> is active and the first period invoice has been generated.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2 shrink-0">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => navigate('/invoices')}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs flex items-center"
+            >
+              <Zap className="w-3.5 h-3.5 mr-1 text-amber-300" />
+              Pay Invoice Online
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSuccessNotice(null)}
+              className="text-xs text-emerald-800 border-emerald-300"
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* 2. ACTIONABLE ALERT BANNERS */}
       {(hasOutstandingBalance || hasPendingQuotations) && (
@@ -540,6 +615,22 @@ export default function CustomerDashboardView() {
             ))}
           </div>
         </Card>
+      )}
+
+      {/* 7. EXPLORE AVAILABLE SUBSCRIPTION PLANS */}
+      <CustomerPlanShowcase onSelectPlan={handleSelectPlan} />
+
+      {/* SUBSCRIPTION CREATION MODAL */}
+      {isPlanModalOpen && (
+        <SubscriptionFormModal
+          isOpen={isPlanModalOpen}
+          onClose={() => {
+            setIsPlanModalOpen(false);
+            setSelectedPlanId('');
+          }}
+          initialPlanId={selectedPlanId}
+          onSuccess={handleSubscriptionSuccess}
+        />
       )}
     </div>
   );

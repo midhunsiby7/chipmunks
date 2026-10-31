@@ -21,6 +21,8 @@ import {
   canCancelInvoice,
   INVOICE_STATUSES,
 } from '../utils/invoiceValidation';
+import { canPayOnline } from '../utils/paymentValidation';
+import RazorpayCheckoutModal from '../components/payments/RazorpayCheckoutModal';
 import {
   Receipt,
   Plus,
@@ -33,6 +35,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Clock,
+  Zap,
 } from 'lucide-react';
 
 export default function InvoicesPage() {
@@ -75,6 +78,8 @@ export default function InvoicesPage() {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [invoiceToCancel, setInvoiceToCancel] = useState(null);
+  const [isRazorpayOpen, setIsRazorpayOpen] = useState(false);
+  const [invoiceForCheckout, setInvoiceForCheckout] = useState(null);
   const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
 
   // Debounce search input
@@ -572,7 +577,20 @@ export default function InvoicesPage() {
 
                       {/* ROW ACTIONS */}
                       <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end space-x-1">
+                        <div className="flex items-center justify-end space-x-1.5">
+                          {canPayOnline(inv, user) && (
+                            <button
+                              onClick={() => {
+                                setInvoiceForCheckout(inv);
+                                setIsRazorpayOpen(true);
+                              }}
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-2xs transition-colors"
+                              title="Pay online with Razorpay"
+                            >
+                              <Zap className="w-3.5 h-3.5 text-amber-300 mr-0.5" />
+                              <span>Pay</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => {
                               setSelectedInvoice(inv);
@@ -681,6 +699,22 @@ export default function InvoicesPage() {
           isOpen={isRecurringModalOpen}
           onClose={() => setIsRecurringModalOpen(false)}
           onSuccess={fetchInvoices}
+        />
+      )}
+
+      {/* RAZORPAY CHECKOUT MODAL */}
+      {isRazorpayOpen && invoiceForCheckout && (
+        <RazorpayCheckoutModal
+          isOpen={isRazorpayOpen}
+          onClose={() => {
+            setIsRazorpayOpen(false);
+            setInvoiceForCheckout(null);
+          }}
+          invoice={invoiceForCheckout}
+          customerName={customersMap[invoiceForCheckout.customer_id]?.full_name}
+          onSuccess={() => {
+            fetchInvoices();
+          }}
         />
       )}
     </div>

@@ -31,6 +31,7 @@ import {
 function SubscriptionFormBody({
   onClose,
   onSuccess,
+  initialPlanId = '',
 }) {
   const { user } = useAuth();
   const isCustomer = user?.role === 'customer';
@@ -39,7 +40,7 @@ function SubscriptionFormBody({
   const [customerId, setCustomerId] = useState(() => (isCustomer ? user?.id || '' : ''));
 
   // Section B: Plan Association
-  const [planId, setPlanId] = useState('');
+  const [planId, setPlanId] = useState(() => initialPlanId || '');
   const [quantity, setQuantity] = useState('1');
 
   // Section C: Subscription Terms & Dates
@@ -88,6 +89,17 @@ function SubscriptionFormBody({
 
       if (planRes.status === 'fulfilled' && planRes.value?.items) {
         setPlans(planRes.value.items);
+        if (initialPlanId) {
+          const matched = planRes.value.items.find((p) => p.id === initialPlanId);
+          if (matched) {
+            if (matched.minimum_quantity) {
+              setQuantity(String(matched.minimum_quantity));
+            }
+            if (matched.trial_period_days) {
+              setTrialDays(String(matched.trial_period_days));
+            }
+          }
+        }
       }
       if (prodRes.status === 'fulfilled' && prodRes.value?.items) {
         setProducts(prodRes.value.items);
@@ -104,18 +116,23 @@ function SubscriptionFormBody({
     return () => {
       isMounted = false;
     };
-  }, [isCustomer]);
+  }, [isCustomer, initialPlanId]);
 
   // Selected references
   const selectedPlan = plans.find((p) => p.id === planId) || null;
   const selectedTaxRule = taxRules.find((t) => t.id === taxRuleId) || null;
 
-  // Sync min quantity when plan is selected
+  // Sync min quantity and trial days when plan is selected
   const handlePlanChange = (selectedPlanId) => {
     setPlanId(selectedPlanId);
     const p = plans.find((item) => item.id === selectedPlanId);
-    if (p && p.minimum_quantity && Number(quantity) < p.minimum_quantity) {
-      setQuantity(String(p.minimum_quantity));
+    if (p) {
+      if (p.minimum_quantity && Number(quantity) < p.minimum_quantity) {
+        setQuantity(String(p.minimum_quantity));
+      }
+      if (p.trial_period_days) {
+        setTrialDays(String(p.trial_period_days));
+      }
     }
   };
 
@@ -234,8 +251,8 @@ function SubscriptionFormBody({
     setSubmitting(true);
 
     try {
-      await subscriptionService.createSubscription(payload);
-      onSuccess?.();
+      const createdSub = await subscriptionService.createSubscription(payload);
+      onSuccess?.(createdSub);
       onClose();
     } catch (err) {
       const msg =
@@ -732,6 +749,7 @@ export default function SubscriptionFormModal({
   isOpen,
   onClose,
   onSuccess,
+  initialPlanId = '',
 }) {
   return (
     <Modal
@@ -743,6 +761,7 @@ export default function SubscriptionFormModal({
       <SubscriptionFormBody
         onClose={onClose}
         onSuccess={onSuccess}
+        initialPlanId={initialPlanId}
       />
     </Modal>
   );
