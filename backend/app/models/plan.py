@@ -32,7 +32,7 @@ class Plan(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     billing_interval: Mapped[BillingInterval] = mapped_column(
-        Enum(BillingInterval, name="billing_interval_enum"),
+        Enum(BillingInterval, name="billing_interval_enum", values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         index=True
     )

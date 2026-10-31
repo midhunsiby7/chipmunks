@@ -72,22 +72,27 @@ def initialize_firebase() -> None:
 _real_initialize_firebase = initialize_firebase
 
 
-def verify_firebase_id_token(token: str) -> Dict[str, Any]:
+def verify_firebase_id_token(token: str, clock_skew_seconds: int = 10) -> Dict[str, Any]:
     """
     Cryptographically verify a Firebase ID token.
     Returns decoded token dictionary containing uid, email, and email_verified.
+    Tolerates clock skew between client/host and Google time servers.
     """
     try:
         initialize_firebase()
-        decoded_token = auth.verify_id_token(token, check_revoked=True)
+        decoded_token = auth.verify_id_token(token, check_revoked=True, clock_skew_seconds=clock_skew_seconds)
         return decoded_token
     except auth.ExpiredIdTokenError as exc:
-        raise ValueError("Firebase ID token has expired.") from exc
+        logger.warning("Firebase ID token expired: %s", exc)
+        raise ValueError(f"Firebase ID token has expired: {exc}") from exc
     except auth.RevokedIdTokenError as exc:
-        raise ValueError("Firebase ID token has been revoked.") from exc
+        logger.warning("Firebase ID token revoked: %s", exc)
+        raise ValueError(f"Firebase ID token has been revoked: {exc}") from exc
     except auth.InvalidIdTokenError as exc:
-        raise ValueError("Firebase ID token is invalid.") from exc
+        logger.warning("Firebase ID token invalid: %s", exc)
+        raise ValueError(f"Firebase ID token is invalid: {exc}") from exc
     except Exception as exc:
+        logger.error("Could not validate Firebase credentials: %s", exc)
         raise ValueError(f"Could not validate Firebase credentials: {exc}") from exc
 
 

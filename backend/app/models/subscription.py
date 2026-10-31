@@ -48,13 +48,13 @@ class Subscription(Base, TimestampMixin):
         index=True
     )
     status: Mapped[SubscriptionStatus] = mapped_column(
-        Enum(SubscriptionStatus, name="subscription_status_enum"),
+        Enum(SubscriptionStatus, name="subscription_status_enum", values_callable=lambda x: [e.value for e in x]),
         default=SubscriptionStatus.ACTIVE,
         nullable=False,
         index=True
     )
     billing_interval: Mapped[BillingInterval] = mapped_column(
-        Enum(BillingInterval, name="sub_billing_interval_enum"),
+        Enum(BillingInterval, name="sub_billing_interval_enum", values_callable=lambda x: [e.value for e in x]),
         default=BillingInterval.MONTHLY,
         nullable=False,
     )

@@ -30,7 +30,7 @@ class Discount(Base, TimestampMixin):
     code: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     discount_type: Mapped[DiscountType] = mapped_column(
-        Enum(DiscountType, name="discount_type_enum"),
+        Enum(DiscountType, name="discount_type_enum", values_callable=lambda x: [e.value for e in x]),
         nullable=False
     )
     value: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)

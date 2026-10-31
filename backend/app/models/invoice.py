@@ -49,7 +49,7 @@ class Invoice(Base, TimestampMixin):
         index=True
     )
     status: Mapped[InvoiceStatus] = mapped_column(
-        Enum(InvoiceStatus, name="invoice_status_enum"),
+        Enum(InvoiceStatus, name="invoice_status_enum", values_callable=lambda x: [e.value for e in x]),
         default=InvoiceStatus.DRAFT,
         nullable=False,
         index=True

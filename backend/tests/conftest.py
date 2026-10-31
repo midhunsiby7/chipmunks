@@ -99,7 +99,7 @@ async def setup_test_database(monkeypatch):
     }
 
     # Monkeypatch Firebase Admin SDK authentication functions
-    def mock_verify_id_token(token: str, check_revoked: bool = True):
+    def mock_verify_id_token(token: str, check_revoked: bool = True, *args, **kwargs):
         if token == "invalid-token":
             raise ValueError("Firebase ID token is invalid.")
         if token == "expired-token":

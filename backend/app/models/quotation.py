@@ -68,7 +68,7 @@ class Quotation(Base, TimestampMixin):
         nullable=True
     )
     status: Mapped[QuotationStatus] = mapped_column(
-        Enum(QuotationStatus, name="quotation_status_enum"),
+        Enum(QuotationStatus, name="quotation_status_enum", values_callable=lambda x: [e.value for e in x]),
         default=QuotationStatus.DRAFT,
         nullable=False,
         index=True

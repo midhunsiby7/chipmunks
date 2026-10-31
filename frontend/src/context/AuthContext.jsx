@@ -49,7 +49,12 @@ export function AuthProvider({ children }) {
             setAuthError(null);
           }
         } catch (err) {
-          console.warn('[Brightloop AuthContext] Could not fetch backend profile on auth change:', err);
+          if (err.status === 404) {
+            // Expected state during registration: Firebase identity authenticated, but PostgreSQL profile creation in flight
+            console.info('[Brightloop AuthContext] User profile pending initialization in backend database.');
+          } else {
+            console.warn('[Brightloop AuthContext] Could not fetch backend profile on auth change:', err);
+          }
           // If backend profile is not yet initialized (e.g. registration in flight), don't wipe immediately
           if (isSubscribed) {
             const cached = localStorage.getItem('brightloop_user');
@@ -109,7 +114,20 @@ export function AuthProvider({ children }) {
       setFirebaseUser(credential.user);
 
       // Fetch authoritative user profile from FastAPI backend
-      const profile = await userService.getCurrentUserProfile();
+      let profile;
+      try {
+        profile = await userService.getCurrentUserProfile();
+      } catch (profileErr) {
+        if (profileErr.status === 404) {
+          // Profile pending in PostgreSQL for this Firebase account: auto-initialize
+          const fallbackName = credential.user.displayName || email.split('@')[0];
+          profile = await userService.initializeCustomerProfile({
+            fullName: fallbackName,
+          });
+        } else {
+          throw profileErr;
+        }
+      }
 
       if (profile.is_active === false) {
         await authService.signOutUser();
@@ -144,7 +162,18 @@ export function AuthProvider({ children }) {
       setLoading(true);
       setAuthError(null);
       try {
-        const credential = await authService.registerCustomer(email, password);
+        let credential;
+        try {
+          credential = await authService.registerCustomer(email, password);
+        } catch (regErr) {
+          // If the account already exists in Firebase (e.g. from a prior registration attempt),
+          // authenticate with their credentials to ensure their PostgreSQL profile exists without error
+          if (regErr.code === 'auth/email-already-in-use') {
+            credential = await authService.loginWithEmailPassword(email, password);
+          } else {
+            throw regErr;
+          }
+        }
         const idToken = await credential.user.getIdToken();
         setToken(idToken);
         setFirebaseUser(credential.user);
