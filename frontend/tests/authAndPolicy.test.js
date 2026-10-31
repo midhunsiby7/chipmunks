@@ -93,18 +93,20 @@ test('Firebase Error Code Translation', async (t) => {
 test('Role-Based Access Navigation Filtering', async (t) => {
   await t.test('Admin role receives all navigation items including settings', () => {
     const adminItems = getNavItemsForRole('admin');
-    assert.equal(adminItems.length, 11);
+    assert.equal(adminItems.length, 12);
     assert.ok(adminItems.some((item) => item.id === 'settings'));
     assert.ok(adminItems.some((item) => item.id === 'customers'));
     assert.ok(adminItems.some((item) => item.id === 'analytics'));
+    assert.ok(adminItems.some((item) => item.id === 'taxes'));
   });
 
   await t.test('Staff role receives operations items but excludes settings', () => {
     const staffItems = getNavItemsForRole('staff');
-    assert.equal(staffItems.length, 10);
+    assert.equal(staffItems.length, 11);
     assert.ok(!staffItems.some((item) => item.id === 'settings'));
     assert.ok(staffItems.some((item) => item.id === 'customers'));
     assert.ok(staffItems.some((item) => item.id === 'quotations'));
+    assert.ok(staffItems.some((item) => item.id === 'taxes'));
   });
 
   await t.test('Customer role receives only personal billing items', () => {

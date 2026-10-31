@@ -10,6 +10,7 @@ import {
   CreditCard,
   BarChart3,
   Settings,
+  Percent,
 } from 'lucide-react';
 
 /**
@@ -69,8 +70,16 @@ export const NAV_ITEMS = [
     icon: Layers,
     section: 'Catalog',
     roles: ['admin', 'staff'],
-    status: 'planned',
-    plannedPhase: 'Phase 3',
+    status: 'active',
+  },
+  {
+    id: 'taxes',
+    name: 'Tax Rules',
+    path: '/taxes',
+    icon: Percent,
+    section: 'System',
+    roles: ['admin', 'staff'],
+    status: 'active',
   },
   {
     id: 'quotations',

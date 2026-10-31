@@ -11,6 +11,8 @@ import InvoicesPage from './pages/InvoicesPage';
 import ModulePlaceholderPage from './pages/ModulePlaceholderPage';
 import UsersPage from './pages/UsersPage';
 import ProductsPage from './pages/ProductsPage';
+import PlansPage from './pages/PlansPage';
+import TaxesPage from './pages/TaxesPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -19,7 +21,6 @@ import UnauthorizedPage from './pages/UnauthorizedPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 import {
-  Layers,
   FileSpreadsheet,
   Tag,
   CreditCard,
@@ -90,13 +91,17 @@ export default function App() {
               path="plans"
               element={
                 <RoleRoute allowedRoles={['admin', 'staff']}>
-                  <ModulePlaceholderPage
-                    title="Subscription Plans"
-                    section="Catalog"
-                    plannedPhase="Phase 3"
-                    description="Configure multi-interval cadences (daily, weekly, monthly, yearly), trial periods, and currency pricing."
-                    icon={Layers}
-                  />
+                  <PlansPage />
+                </RoleRoute>
+              }
+            />
+
+            {/* 7. Tax Rules Configuration (Admin & Staff Only) */}
+            <Route
+              path="taxes"
+              element={
+                <RoleRoute allowedRoles={['admin', 'staff']}>
+                  <TaxesPage />
                 </RoleRoute>
               }
             />
